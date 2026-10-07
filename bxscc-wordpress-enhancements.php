@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.52
+ * Version: 1.53
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -880,8 +880,8 @@ function bx_site_page_urls() {
 
 /* 19. The not-found page. The theme's own (404.php) set its text straight under the menu, out of line with the
        sidebar (it skips the wrappers every page uses), and offered a search box. templates/404.php uses the page
-       layout instead: a "Page Not Found" heading styled like the event section headings, the navy line under it
-       (gold in dark mode), and a short centered note in Chinese and English. The address still answers 404, so
+       layout instead: an "Error Code 404" heading styled like the event section headings, the navy line under it
+       (gold in dark mode), and one centered line starting with a playful 抱歉！ ("sorry!"). The address still answers 404, so
        search engines drop it. Only with News Magazine. */
 add_filter('template_include', function ($template) {
     if (is_404() && get_template() === 'news-magazine' && is_readable(__DIR__ . '/templates/404.php')) { return __DIR__ . '/templates/404.php'; }

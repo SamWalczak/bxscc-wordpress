@@ -1,7 +1,8 @@
 <?php
 /* The not-found page (block 19 of the main file), for the News Magazine theme. Same layout as the theme's page.php,
-   so it lines up with the sidebar like every other page. A heading styled like the event section headings ("Upcoming
-   Events"), the navy line those sections have under their heading (gold in dark mode), and a short centered note.
+   so it lines up with the sidebar like every other page. An "Error Code 404" heading styled like the event section headings
+   ("Upcoming Events"), the navy line those sections have under their heading (gold in dark mode), and one centered
+   line: a playful 抱歉！ ("sorry!") and the English note.
    No search form. */
 if (!defined('ABSPATH')) { exit; }
 global $wdwt_front;
@@ -19,12 +20,11 @@ get_header();
   <?php } ?>
   <div id="content">
     <div class="single-post">
-      <h1 class="page-header"><span>Page Not Found</span></h1>
+      <h1 class="page-header"><span>Error Code 404</span></h1>
       <div class="entry">
-<h1 style="text-align: center;"><strong>Page Not Found</strong></h1>
+<h1 style="text-align: center;"><strong>Error Code 404</strong></h1>
 <div class="bx-404">
-<p><span lang="zh-Hans">抱歉</span><br>
-That page was not found. Please navigate using the menu above to find out more about the BXSCC.</p>
+<p><span lang="zh-Hans">抱歉！</span>That page was not found. Please navigate using the menu above to find out more about the BXSCC.</p>
 </div>
       </div>
     </div>
