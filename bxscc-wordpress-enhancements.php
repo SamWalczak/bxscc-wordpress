@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.59
+ * Version: 1.60
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -486,6 +486,8 @@ add_action('template_redirect', function () {
                 $html = preg_replace_callback('#</header>#', function () use ($show) { return $show . '</header>'; }, $html, 1);
             }
         }
+        // dead outside links: the Internet Archive's copy instead (block 20, links/links.php)
+        if (is_string($html) && function_exists('bx_lk_rewrite')) { $html = bx_lk_rewrite($html); }
         // a step that fails (a regular expression that hits PHP's limits returns nothing) must not blank the page, which
         // the page cache would then keep: send the page as WordPress made it instead
         return (is_string($html) && $html !== '') ? $html : $page;
@@ -937,6 +939,10 @@ add_filter('map_meta_cap', function ($caps, $cap) {
 /* 13. Events, Sections and the automatic yearly pages (in events/; dashboard menu: Events; help: Events > How it works).
        The events table is created the first time this code runs, so there is nothing to activate. */
 require_once __DIR__ . '/events/events.php';
+
+/* 20. Dead links (in links/; report: Tools > Link check). Outside links are checked weekly; one that fails three weekly
+       checks in a row is swapped, as pages are built, for the Internet Archive's copy of the page. */
+require_once __DIR__ . '/links/links.php';
 
 /* 14. Files the pages do not need. Each was checked against every page of the site (October 2026):
        - the theme's jQuery UI effects (explode, slide, transfer and their core): nothing calls them;

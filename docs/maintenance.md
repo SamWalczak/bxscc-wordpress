@@ -4,9 +4,10 @@
 
 PHP can only be changed by uploading files (the dashboard editors are off; see [site-css.md](site-css.md#php-cannot-be-edited-from-the-dashboard)). Upload in cPanel File Manager or over SFTP, overwriting the file.
 
-- **Order matters when a new file is required.** `bxscc-wordpress-enhancements.php` loads `events/events.php` and, in the dashboard, `css-editor.php`. Upload new or renamed required files first and the main file last; a main file that requires a missing file stops every page with a fatal error.
+- **Order matters when a new file is required.** `bxscc-wordpress-enhancements.php` loads `events/events.php`, `links/links.php` and, in the dashboard, `css-editor.php`. Upload new or renamed required files first and the main file last; a main file that requires a missing file stops every page with a fatal error.
 - **Check what arrived.** Compare the uploaded file's checksum with the copy here: `md5sum bxscc-wordpress-enhancements.php` on the server against the same command locally. Some upload tools drop the file's final newline, which changes the checksum; `head -c -1 file | md5sum` gives the checksum without it.
 - **Keep the old copy** (download it first) so a bad upload can be reversed in a minute.
+- **Wait 90 seconds before emptying the page cache.** The site's PHP (ea-php83) keeps compiled copies of PHP files and looks for changed files only every 90 seconds (`opcache.revalidate_freq = 90`). Pages built in that window come from the old code, and the cache would keep them.
 
 The version number is in the plugin header (`Version:`) at the top of `bxscc-wordpress-enhancements.php`.
 
