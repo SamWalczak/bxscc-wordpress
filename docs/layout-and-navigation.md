@@ -1,12 +1,12 @@
 # Layout and navigation
 
-Code: blocks 3b, 3e, 8 and 9 of `bxscc-wordpress-enhancements.php`; layout rules in `css/theme-fixes.css`.
+Code: blocks 3b, 3e, 8, 9 and 19 of `bxscc-wordpress-enhancements.php`, and `templates/404.php`; layout rules in `css/theme-fixes.css`.
 
 ## Sidebar and content end level (desktop)
 
-On wide screens (768px and up), if the content column is shorter than the sidebar, the last cell of the last table in the content gets extra bottom padding so both columns end on the same line. It recalculates when the page finishes loading and when the window width changes (not on height-only changes, which iOS fires when its toolbar shows or hides). On narrower screens the sidebar sits below the content and nothing is padded.
+When the sidebar is beside the content (screens wider than 1024px), if the content column is shorter than the sidebar, the last cell of the last table in the content gets extra bottom padding so both columns end on the same line. It recalculates when the page finishes loading and when the window width changes (not on height-only changes, which iOS fires when its toolbar shows or hides). At 1024px and narrower the sidebar sits below the content and nothing is padded. (Until 1.51 the padding stopped only below 768px, so tablets from 768 to 1024px got a window-tall blank space at the end of every page.)
 
-Related CSS in `theme-fixes.css`: on desktop the sidebar is one window tall with its badge at the bottom, and on tablets and phones the content is placed above the sidebar in CSS, so the theme's script that used to move it has nothing to do.
+Related CSS in `theme-fixes.css`: in the side-by-side layout the sidebar is one window tall with its badge at the bottom (also limited to wider than 1024px since 1.51), and on tablets and phones the content is placed above the sidebar in CSS, so the theme's script that used to move it has nothing to do.
 
 ## Phone menu: links to the parent pages
 
@@ -29,6 +29,10 @@ A post counts as a yearly page when its title reads "News and Events" or "News a
 ## Home page tab title
 
 The browser tab on the home page shows only the site name. WordPress adds the tagline by default, which here repeats the name. Other pages keep the usual "Page title – Site name".
+
+## Not-found page
+
+The theme's own not-found page put its text straight under the menu, out of line with the sidebar, and offered a search box. Block 19 replaces it (with News Magazine only) with `templates/404.php`, which uses the theme's page layout: one table whose top line meets the sidebar's, like every other page, saying there is no page at that address, with a link to the home page and the site's sections. The sections are read from the menu in the Primary Menu location (top-level items except Home, each with its sub-pages), so the list follows any change to the menu. No search form. The address still answers 404, so search engines drop it, and WordPress itself still redirects a mistyped or moved address when it finds exactly one page with that name (for example `/history/` to `/about-us/history/`) before this page is ever shown.
 
 ## Page titles
 

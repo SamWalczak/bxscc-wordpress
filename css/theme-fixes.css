@@ -128,14 +128,15 @@ body > .container { padding-bottom: 30px; }
 #sidebar1 .widget_custom_html form { margin-top: 10px !important; }
 #sidebar1 .widget_media_image { text-align: center; }
 
-/* ---------- desktop: sidebar one window tall, badge at the bottom, scroll lock when the window is tall enough ---------- */
-@media (min-width: 768px) {
+/* ---------- desktop: sidebar one window tall, badge at the bottom, scroll lock when the window is tall enough ----------
+   Side-by-side layout only (wider than 1024px): at 768 to 1024px the sidebar sits below the content (stacked layouts, below). */
+@media (min-width: 1025px) {
   #sidebar1 .sidebar-container { display: flex; flex-direction: column; box-sizing: border-box; min-height: calc(100vh + 2px); padding-bottom: 0 !important; }
   .admin-bar #sidebar1 .sidebar-container { min-height: calc(100vh - 30px); }
   #sidebar1 .sidebar-container > .clear { display: none; }
   #sidebar1 .widget_media_image { margin-top: auto; margin-bottom: 0; padding: 10px 0; }
 }
-@media (min-width: 768px) and (min-height: 880px) {
+@media (min-width: 1025px) and (min-height: 880px) {
   #sidebar1 { position: sticky; top: -26px; align-self: flex-start; will-change: transform; }
   .admin-bar #sidebar1 { top: 6px; }
   /* no shadow while pinned: a soft-edged full-height box is expensive to repaint every scroll frame */

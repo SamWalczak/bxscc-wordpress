@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.50
+ * Version: 1.51
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -201,7 +201,9 @@ add_action('wp_footer', function () {
 <?php
 }, 20);
 
-/* 3b. Home page: if the content column is shorter than the sidebar, pad the last cell of the last table so both end level. */
+/* 3b. Any page whose content column is shorter than the sidebar beside it: pad the last cell of the last table so both
+       end level. Only while the sidebar is beside the content (wider than 1024px); in the stacked tablet and phone layouts
+       the sidebar is below the content, and padding by its height left a window-tall blank space at 768 to 1024px. */
 add_action('wp_footer', function () {
 ?>
 <script>
@@ -222,8 +224,9 @@ add_action('wp_footer', function () {
       if (window.innerWidth === lastWidth) { return; }   // iOS toolbar show/hide fires resize without a width change
       lastWidth = window.innerWidth;
     }
-    if (window.innerWidth < 768) { if (cell.style.paddingBottom) { cell.style.paddingBottom = ""; } return; }
     cell.style.paddingBottom = base + "px";
+    var a = aside.getBoundingClientRect(), c = content.getBoundingClientRect();
+    if (a.left < c.right - 1 && a.right > c.left + 1) { cell.style.paddingBottom = ""; return; }   // stacked: the sidebar is below, not beside
     var saved = aside.style.position;
     aside.style.position = "static";
     var asideBottom = aside.getBoundingClientRect().bottom;
@@ -874,3 +877,17 @@ function bx_site_page_urls() {
     foreach (get_users(array('has_published_posts' => array('post'), 'fields' => 'ID')) as $uid) { $urls[] = get_author_posts_url((int) $uid); }
     return array_values(array_unique(array_filter($urls)));
 }
+
+/* 19. The not-found page. The theme's own (404.php) set its text straight under the menu, out of line with the
+       sidebar, and offered a search box. templates/404.php uses the layout of every other page instead: one table
+       whose top line meets the sidebar's, a short explanation, and the site's sections taken from the primary menu.
+       The address still answers 404 (Page not found), so search engines drop it. Only with News Magazine. */
+add_filter('template_include', function ($template) {
+    if (is_404() && get_template() === 'news-magazine' && is_readable(__DIR__ . '/templates/404.php')) { return __DIR__ . '/templates/404.php'; }
+    return $template;
+}, 20);
+add_action('wp_head', function () {
+    if (!is_404() || get_template() !== 'news-magazine') { return; }
+    echo '<style id="bx-404">.bx-404-map{list-style:none;margin:6px 0 4px;padding:0}.bx-404-map li{margin:0 0 10px;padding:0;line-height:1.6;background:none}'
+        . '.bx-404-map li::before{content:none}.bx-404-map li>a{font-weight:600}.bx-404-sub{display:block;padding-left:1em}@media (max-width:599px){.bx-404-sub{padding-left:0}}</style>' . "\n";
+}, 120);
