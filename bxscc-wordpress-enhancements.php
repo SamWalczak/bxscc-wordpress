@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.53
+ * Version: 1.54
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -540,6 +540,42 @@ add_action('wp_footer', function () {
 </script>
 <?php
 }, 23);
+
+/* 3f. Desktop dropdown menus open on hover with CSS (theme-fixes.css), not with the theme's script. The theme slid each
+       dropdown open and shut with jQuery; with the pointer resting near a dropdown's growing or shrinking edge, every
+       step of the animation moved the edge across the pointer and started the opposite animation, so the menu
+       flickered open and shut until the pointer moved. Removing the theme's hover handlers (they only ran on screens
+       wider than 1024px; the tap-to-open phone and tablet menu is a separate handler and stays) leaves the CSS rule,
+       which shows a dropdown while its menu item is hovered or holds keyboard focus. */
+add_action('wp_footer', function () {
+?>
+<script>
+jQuery(function ($) { $("#top-nav > div > ul li, #top-nav > div > div > ul li").off("mouseenter mouseleave"); });
+</script>
+<?php
+}, 22);
+
+/* 3g. The theme's resize handlers (its layout switch in responsive.js and the home carousel's sizing) depend only on the
+       window's width, but ran on every resize, including the height-only ones a phone fires when its browser bar
+       slides back in, which is what happens when scrolling up again after reaching the bottom of a page. On the home
+       page that work cost a dropped frame at that moment (measured on a phone-sized window at 6x CPU slowdown). They
+       now run only when the width changes. This wraps jQuery's resize dispatch, which only the theme uses here. */
+add_action('wp_footer', function () {
+?>
+<script>
+(function ($) {
+  if (!$ || !$.event) { return; }
+  var lastWidth = window.innerWidth;
+  $.event.special.resize = $.event.special.resize || {};
+  $.event.special.resize.handle = function (event) {
+    if (event.bxWidthChanged === undefined) { event.bxWidthChanged = window.innerWidth !== lastWidth; lastWidth = window.innerWidth; }
+    if (!event.bxWidthChanged) { return; }
+    return event.handleObj.handler.apply(this, arguments);
+  };
+})(window.jQuery);
+</script>
+<?php
+}, 22);
 
 /* 4. XML-RPC is unused on this site; turning it off removes a login brute-force surface. */
 add_filter('xmlrpc_enabled', '__return_false');

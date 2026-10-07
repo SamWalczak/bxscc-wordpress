@@ -26,6 +26,10 @@ At the bottom of each yearly News and Events post, a bar links to the previous y
 
 A post counts as a yearly page when its title reads "News and Events" or "News and Media" followed by a four-digit year.
 
+## Desktop dropdown menus
+
+On screens wider than 1024px a dropdown opens while its menu item is hovered or holds keyboard focus (`theme-fixes.css`), with no animation. The theme opened and closed them with jQuery slide animations; with the pointer resting near a dropdown's moving edge, each step of the animation moved the edge across the pointer and started the opposite animation, so the menu flickered until the pointer moved (for example after moving quickly from About Us to just below the middle of History). Block 3f removes the theme's hover handlers; the tap-to-open menu on tablets and phones is a separate handler and is unchanged. Keyboard users now get the dropdowns too.
+
 ## Home page tab title
 
 The browser tab on the home page shows only the site name. WordPress adds the tagline by default, which here repeats the name. Other pages keep the usual "Page title – Site name".

@@ -25,6 +25,8 @@ The theme has no Discord slot, so the Discord invite address goes in the theme's
 
 The theme draws the Facebook and LinkedIn icons with the Font Awesome icon font: a 28 KB stylesheet and a 64 KB font file for two small glyphs. `theme-fixes.css` draws those two the same way as the Discord logo, as SVG masks made from Font Awesome 4.2's own outlines, sized and placed where the font put them (the glyph box is 1em tall and sits 256/1792 em below the baseline), so they look the same. The font and its stylesheet are no longer loaded ([performance-and-security.md](performance-and-security.md)). The masks take the link's text color, so hover and dark mode work as before.
 
+Each icon is centered in its square by the square itself (a flex box), and each mask is cropped to its glyph's outline, so the three glyphs share the same center whatever font metrics the browser has. Until 1.54 the Facebook and LinkedIn glyphs were placed by font metrics (as the icon font had placed them) and the Discord one by `vertical-align: middle`, which left the Discord logo about 1.5px low.
+
 ## Dark-mode button
 
 The moon button is inserted after the social icon list. See [dark-mode.md](dark-mode.md).
