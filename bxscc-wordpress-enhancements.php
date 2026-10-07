@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.55
+ * Version: 1.56
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -545,8 +545,9 @@ add_action('wp_footer', function () {
        dropdown open and shut with jQuery; with the pointer resting near a dropdown's growing or shrinking edge, every
        step of the animation moved the edge across the pointer and started the opposite animation, so the menu
        flickered open and shut until the pointer moved. Removing the theme's hover handlers (they only ran on screens
-       wider than 1024px; the tap-to-open phone and tablet menu is a separate handler and stays) leaves the CSS rule,
-       which shows a dropdown while its menu item is hovered or holds keyboard focus. */
+       wider than 1024px; the tap-to-open phone and tablet menu is a separate handler and stays) leaves the CSS rules,
+       which show a dropdown while its menu item is hovered or holds keyboard focus and unroll it with a mask, which
+       changes what is drawn but not the dropdown's hover area, so nothing moves under the pointer. */
 add_action('wp_footer', function () {
 ?>
 <script>

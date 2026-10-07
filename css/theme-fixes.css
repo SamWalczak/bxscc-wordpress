@@ -113,10 +113,24 @@ body > .container { padding-bottom: 30px; }
 #top-nav li ul li > a:hover { background: transparent !important; }
 #top-nav li ul li:hover > a { color: var(--bx-gold) !important; }
 #top-nav li ul li.current_page_item > a, #top-nav li ul li.current-menu-item > a { color: var(--bx-gold) !important; background: transparent !important; }
-/* desktop dropdowns: shown while their menu item is hovered or holds keyboard focus, with no animation (plugin block 3f
-   removes the theme's sliding jQuery version, which flickered when the pointer rested near a dropdown's moving edge) */
+/* desktop dropdowns: shown while their menu item is hovered or holds keyboard focus (plugin block 3f removes the theme's
+   jQuery version, which slid the dropdown's height open and shut: its moving edge crossed a resting pointer, which
+   restarted the opposite slide, so the menu flickered). Here the dropdown takes its full size, and so its full hover
+   area, on the first frame; only a mask unrolls it from the top over 0.2s, and a mask changes what is drawn, not where
+   the pointer counts as over the dropdown (in Chrome and Safari; Firefox may count only the drawn part, so a closing
+   dropdown ignores the pointer and cannot reopen itself under a resting one). Closing fades out over 0.1s. No animation
+   for visitors who ask for less motion. */
+@keyframes bx-dropdown-open {
+  from { -webkit-mask-image: linear-gradient(#000, #000); mask-image: linear-gradient(#000, #000); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: top; mask-position: top; -webkit-mask-size: 100% 0%; mask-size: 100% 0%; }
+  to   { -webkit-mask-image: linear-gradient(#000, #000); mask-image: linear-gradient(#000, #000); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: top; mask-position: top; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+}
 @media (min-width: 1025px) {
-  #top-nav li:hover > ul, #top-nav li:focus-within > ul { display: block !important; height: auto !important; overflow: visible !important; }
+  #top-nav li > ul { display: block !important; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 0.1s linear, visibility 0s linear 0.1s !important; }
+  #top-nav li:hover > ul, #top-nav li:focus-within > ul { visibility: visible; opacity: 1; pointer-events: auto; height: auto !important; overflow: visible !important; transition: none !important; animation: bx-dropdown-open 0.2s ease-out; }
+}
+@media (min-width: 1025px) and (prefers-reduced-motion: reduce) {
+  #top-nav li:hover > ul, #top-nav li:focus-within > ul { animation: none; }
+  #top-nav li > ul { transition: none !important; }
 }
 
 /* ---------- sidebar ---------- */

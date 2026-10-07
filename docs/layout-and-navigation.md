@@ -28,7 +28,9 @@ A post counts as a yearly page when its title reads "News and Events" or "News a
 
 ## Desktop dropdown menus
 
-On screens wider than 1024px a dropdown opens while its menu item is hovered or holds keyboard focus (`theme-fixes.css`), with no animation. The theme opened and closed them with jQuery slide animations; with the pointer resting near a dropdown's moving edge, each step of the animation moved the edge across the pointer and started the opposite animation, so the menu flickered until the pointer moved (for example after moving quickly from About Us to just below the middle of History). Block 3f removes the theme's hover handlers; the tap-to-open menu on tablets and phones is a separate handler and is unchanged. Keyboard users now get the dropdowns too.
+On screens wider than 1024px a dropdown opens while its menu item is hovered or holds keyboard focus (`theme-fixes.css`). It unrolls from the top over 0.2 seconds and fades out over 0.1 seconds when the pointer leaves; visitors whose system asks for reduced motion get no animation. The theme opened and closed them with jQuery slide animations that changed the dropdown's height; with the pointer resting near a dropdown's moving edge, each step of the animation moved the edge across the pointer and started the opposite animation, so the menu flickered until the pointer moved (for example after moving quickly from About Us to just below the middle of History). Block 3f removes the theme's hover handlers; the tap-to-open menu on tablets and phones is a separate handler and is unchanged. Keyboard users now get the dropdowns too.
+
+The unroll keeps the dropdown at its full size from the first frame and animates a CSS mask over it, so the area where the pointer counts as over the dropdown never moves (masks do not affect that in Chrome or Safari). Firefox may count only the drawn part; there, a closing dropdown ignores the pointer (`pointer-events: none`), so it cannot reopen itself under a resting pointer, and at worst a very fast move to the bottom of a dropdown in its first 0.2 seconds closes it.
 
 ## Home page tab title
 
