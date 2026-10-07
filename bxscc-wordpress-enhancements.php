@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.51
+ * Version: 1.52
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -879,15 +879,16 @@ function bx_site_page_urls() {
 }
 
 /* 19. The not-found page. The theme's own (404.php) set its text straight under the menu, out of line with the
-       sidebar, and offered a search box. templates/404.php uses the layout of every other page instead: one table
-       whose top line meets the sidebar's, a short explanation, and the site's sections taken from the primary menu.
-       The address still answers 404 (Page not found), so search engines drop it. Only with News Magazine. */
+       sidebar (it skips the wrappers every page uses), and offered a search box. templates/404.php uses the page
+       layout instead: a "Page Not Found" heading styled like the event section headings, the navy line under it
+       (gold in dark mode), and a short centered note in Chinese and English. The address still answers 404, so
+       search engines drop it. Only with News Magazine. */
 add_filter('template_include', function ($template) {
     if (is_404() && get_template() === 'news-magazine' && is_readable(__DIR__ . '/templates/404.php')) { return __DIR__ . '/templates/404.php'; }
     return $template;
 }, 20);
 add_action('wp_head', function () {
     if (!is_404() || get_template() !== 'news-magazine') { return; }
-    echo '<style id="bx-404">.bx-404-map{list-style:none;margin:6px 0 4px;padding:0}.bx-404-map li{margin:0 0 10px;padding:0;line-height:1.6;background:none}'
-        . '.bx-404-map li::before{content:none}.bx-404-map li>a{font-weight:600}.bx-404-sub{display:block;padding-left:1em}@media (max-width:599px){.bx-404-sub{padding-left:0}}</style>' . "\n";
+    echo '<style id="bx-404">.bx-404{border-top:2px solid var(--bx-navy);padding:14px 18px 0;text-align:center}'
+        . 'html[data-theme="dark"] .bx-404{border-top-color:var(--bx-gold)}.bx-404 p{margin:0;line-height:1.6}</style>' . "\n";
 }, 120);
