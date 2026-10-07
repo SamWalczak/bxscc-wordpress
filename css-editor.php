@@ -68,7 +68,7 @@ function bx_css_write($name, $css, $note) {
     if (file_put_contents($path, $css) === false) { return 'Could not write ' . $name . '.css. Check the file permissions in cPanel.'; }
     $all = bx_css_history($name);
     foreach (array_slice($all, BX_CSS_KEEP) as $h) { @unlink($dir . '/' . $h['file']); }
-    do_action('rt_nginx_helper_purge_all');   // Nginx Helper: empty the page cache so visitors see the change
+    bx_purge_all_pages_soon();   // empty every page's cached copy, page by page (block 18 of the main file)
     return '';
 }
 
@@ -123,7 +123,7 @@ function bx_css_screen() {
     $name = isset($_GET['file']) && is_string($_GET['file']) && isset($files[$_GET['file']]) ? $_GET['file'] : 'components';
     $base = admin_url('themes.php?page=bx-site-css&file=' . $name);
     $view = isset($_GET['view']) && is_string($_GET['view']) ? bx_css_clean_version(wp_unslash($_GET['view'])) : '';
-    $msgs = array('saved' => array('success', 'Saved. The page cache was emptied; reload the site to see the change.'), 'restored' => array('success', 'That version is current again. The version it replaced is in the history.'));
+    $msgs = array('saved' => array('success', 'Saved. Every page\'s cached copy is being emptied; reload the site in a few seconds to see the change.'), 'restored' => array('success', 'That version is current again. The version it replaced is in the history.'));
     ?>
     <div class="wrap">
       <h1>Site CSS</h1>

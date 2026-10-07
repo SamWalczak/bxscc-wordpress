@@ -14,10 +14,14 @@ The version number is in the plugin header (`Version:`) at the top of `bxscc-wor
 
 bxscc.org sits behind an Nginx full-page cache. Visitors get a saved copy of each page; a change appears only after that copy is purged or expires. The response header `x-proxy-cache` says which: `HIT` (saved copy) or `MISS` (built fresh).
 
-- **One page**: request its address with `/purge` in front of the path, for example `https://example.org/purge/news-and-events/`. A `404` means there was no saved copy.
-- **Everything**: the host's cache tool (on bxscc.org's host, cPanel > Cache Manager > purge all).
-- **Nginx Helper**: purges single pages automatically when a post or page is saved. Its "Purge Entire Cache" button and the purge after a Site CSS save depend on the plugin reaching the host's cache; check with `x-proxy-cache` after purging.
-- **Events** do not purge anything when saved; purge the home page, News and Events and the event's yearly pages.
+- **One page**: request its address with `/purge` in front of the path, for example `https://example.org/purge/news-and-events/`. `200` means the saved copy was removed, `404` that there was none.
+- **Saving a post or page**: Nginx Helper empties that page (and the home page and archives, per its settings) the same way. This works on bxscc.org.
+- **Site CSS, events and sections**: this plugin empties every page of the site the same way, page by page, after a save (block 18). It runs at the end of the request, after the browser has its answer where the server allows it.
+- **What does not work on bxscc.org** (tested October 7, 2026): Nginx Helper's "Purge Entire Cache" (it deletes files in a cache folder on the same machine, `/var/run/nginx-cache`, which a shared hosting account does not have), cPanel > Cache Manager's purge all, and a wildcard `/purge/*` request (`404`). To empty everything by hand, use the plugin's own page-by-page purge from the site folder (it prints how many pages it emptied; 0 means Nginx Helper is not active or its purging is off):
+
+```
+wp eval 'echo bx_purge_all_pages(), " pages emptied\n";' --skip-themes --skip-plugins=wordfence,updraftplus,shortcodes-ultimate
+```
 
 Checking from a terminal: some host firewalls reject `curl`'s default User-Agent (HTTP 406), so send a browser-like one: `curl -s -A "Mozilla/5.0" -D - -o /dev/null https://example.org/ | grep -i x-proxy-cache`.
 

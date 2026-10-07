@@ -29,7 +29,7 @@ For Administrators (capability `edit_theme_options`, constant `BX_CSS_CAP` in `c
 - **Compare / restore.** Any earlier version opens side by side with the current file (WordPress's own diff view), with a **Restore this version** button. Restoring is itself a new history entry ("Restored the version from …"), so it can be undone the same way.
 - **Edits made outside the editor are kept.** If a file was changed by upload or in cPanel since the last save, the editor says so, and the next save first files that outside version in the history ("outside"), so nothing is lost.
 - **First visit.** Opening Site CSS for the first time records each file's current contents as a "Starting version", so there is always something to go back to.
-- **Cache.** After a save the editor asks Nginx Helper (if installed) to empty the page cache (`rt_nginx_helper_purge_all`). If the host's cache is not reachable that way, purge it by hand; see [maintenance.md](maintenance.md#page-cache).
+- **Cache.** The CSS is part of every page, so after a save or restore every page's cached copy is emptied, page by page, through Nginx Helper (if it is installed with purging on); see [maintenance.md](maintenance.md#page-cache). Reload the site a few seconds after saving.
 
 The CSS is sent from the browser base64-encoded. Some hosts' firewalls (ModSecurity rules) reject form posts that contain CSS or markup-like text, which made plain saves fail with HTTP 406.
 

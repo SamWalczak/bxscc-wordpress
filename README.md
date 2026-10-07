@@ -25,7 +25,7 @@ Maintenance (installing, updating, page caching, troubleshooting, changing theme
 
 - WordPress (in production on 7.1.3).
 - The **News Magazine** theme by Web-Dorado, version 1.1.12. The banner, header and `css/theme-fixes.css` features patch that theme's markup and do nothing useful on another theme. Events, Site CSS, photos, video previews, fonts, page markup styles and the performance settings work on any theme. See [Changing themes](docs/maintenance.md#changing-themes).
-- No other plugins are required. If **Nginx Helper** is installed, Site CSS saves ask it to empty the page cache.
+- No other plugins are required. If **Nginx Helper** is installed with purging on, saving Site CSS or changing an event or section empties every page's cached copy through it, page by page (block 18).
 
 ## Installing
 

@@ -93,7 +93,7 @@ Deleting an event cannot be undone. Deleting also removes it from any hand-picke
 
 ## Caching
 
-On a site with a full-page cache (bxscc.org uses an Nginx proxy cache), saving an event does not by itself empty the cache, so a changed list can take until the cached copy expires to appear. Purge the affected pages (home, News and Events, the event's yearly pages) after editing; see [maintenance.md](maintenance.md#page-cache).
+On a site with a full-page cache (bxscc.org uses an Nginx proxy cache), saving or deleting an event, or saving or deleting a section, empties every page's cached copy through Nginx Helper (if it is installed with purging on), so the change shows on the next visit; see [maintenance.md](maintenance.md#page-cache).
 
 ## Upgrades
 

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.48
+ * Version: 1.49
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -809,3 +809,46 @@ if (get_template() === 'news-magazine') {
 add_action('after_setup_theme', function () {
     if (!wp_is_block_theme()) { remove_action('wp_head', 'wp_print_font_faces', 50); }
 });
+
+/* 18. Page cache. Nginx keeps a copy of each page and serves it without running WordPress (response header
+       x-proxy-cache: HIT). Nginx Helper empties one page's copy by requesting /purge/<page>, and does so when that
+       page or post is saved; that works on bxscc.org. Its "purge everything" only deletes files in a cache folder on
+       the same machine (/var/run/nginx-cache), which this hosting account does not have, so it empties nothing
+       here (tested October 7, 2026). Site CSS is on every page and events are on many, and neither is a post, so
+       after a change to either, every page of the site is emptied the way Nginx Helper empties one. That runs once
+       per request, at the very end, after the browser has its answer where the server allows it (PHP-FPM or
+       LiteSpeed), so a save does not wait for it. Nothing happens if Nginx Helper is inactive or its purging is off. */
+function bx_purge_all_pages_soon() {
+    static $queued = false;
+    if (!$queued) { $queued = true; add_action('shutdown', 'bx_purge_all_pages', 100); }
+}
+
+function bx_purge_all_pages() {
+    global $nginx_purger;
+    $opt = get_site_option('rt_wp_nginx_helper_options');
+    if (!is_object($nginx_purger) || !method_exists($nginx_purger, 'purge_url') || !is_array($opt) || empty($opt['enable_purge'])) { return 0; }
+    if (function_exists('fastcgi_finish_request')) { fastcgi_finish_request(); }
+    elseif (function_exists('litespeed_finish_request')) { litespeed_finish_request(); }
+    ignore_user_abort(true);
+    if (function_exists('set_time_limit')) { @set_time_limit(300); }
+    $urls = bx_site_page_urls();
+    foreach ($urls as $url) { $nginx_purger->purge_url($url, false); }
+    return count($urls);
+}
+
+/* Every address that shows a page of the site: home, each published page and post, and the archives that list posts. */
+function bx_site_page_urls() {
+    global $wpdb;
+    $urls = array(home_url('/'));
+    $ids = get_posts(array('post_type' => array('page', 'post'), 'post_status' => 'publish', 'numberposts' => -1, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC'));
+    _prime_post_caches($ids, false, false);
+    foreach ($ids as $id) { $urls[] = get_permalink($id); }
+    foreach ($wpdb->get_results("SELECT DISTINCT YEAR(post_date) AS y, MONTH(post_date) AS m FROM {$wpdb->posts} WHERE post_type = 'post' AND post_status = 'publish'") as $d) {
+        $urls[] = get_year_link((int) $d->y);
+        $urls[] = get_month_link((int) $d->y, (int) $d->m);
+    }
+    $terms = get_terms(array('taxonomy' => array('category', 'post_tag'), 'hide_empty' => true));
+    if (!is_wp_error($terms)) { foreach ($terms as $t) { $link = get_term_link($t); if (!is_wp_error($link)) { $urls[] = $link; } } }
+    foreach (get_users(array('has_published_posts' => array('post'), 'fields' => 'ID')) as $uid) { $urls[] = get_author_posts_url((int) $uid); }
+    return array_values(array_unique(array_filter($urls)));
+}

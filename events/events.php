@@ -109,6 +109,7 @@ function bx_ev_save($e, $id = 0) {
     if ($id) { $wpdb->update(bx_ev_table(), $row, array('id' => $id)); }
     else { $wpdb->insert(bx_ev_table(), $row); $id = (int) $wpdb->insert_id; }
     for ($y = $row['y1']; $y <= $row['y2']; $y++) { bx_ev_year_page($y); }
+    bx_purge_all_pages_soon();   // the event shows on several pages: empty their cached copies (block 18 of the main file)
     return $id;
 }
 
@@ -120,6 +121,7 @@ function bx_ev_get($id) {
 function bx_ev_delete($id) {
     global $wpdb;
     $wpdb->delete(bx_ev_table(), array('id' => (int) $id));
+    bx_purge_all_pages_soon();
     foreach (bx_ev_sections() as $name => $s) {   // drop it from any hand-picked section
         if (!empty($s['ids']) && in_array((int) $id, $s['ids'], true)) {
             $s['ids'] = array_values(array_diff($s['ids'], array((int) $id)));
@@ -181,6 +183,10 @@ add_action('init', function () {
         picked    a hand-picked list of events
       Placed on a page with [bx_section name="..."]; the same section can go on several pages.
    ============================================================================================ */
+// a changed section changes every page it is placed on (and deleting an event can change a hand-picked one)
+add_action('update_option_bx_ev_sections', 'bx_purge_all_pages_soon', 10, 0);
+add_action('add_option_bx_ev_sections', 'bx_purge_all_pages_soon', 10, 0);
+
 function bx_ev_sections() { $s = get_option('bx_ev_sections', array()); return is_array($s) ? $s : array(); }
 
 function bx_ev_section_save($name, $s) {
