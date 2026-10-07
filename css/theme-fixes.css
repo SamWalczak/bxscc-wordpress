@@ -55,7 +55,8 @@ body > .container { padding-bottom: 30px; }
 #header-middle > .clear { display: none; }
 #logo { display: block !important; }
 #header_part .container, #header-container .container { text-align: left; }
-#logo img { height: 100px; width: 105px; display: block; }   /* explicit width reserves the space before the file arrives */
+#logo img { height: 100px; width: 104px; display: block; object-fit: cover; }   /* explicit size reserves the space before the file arrives;
+   104px is the row of social icons above it (the 100 x 96 file would be 104.17px wide at this height: cover trims the 0.17px) */
 #adv { order: 2; float: none !important; width: auto !important; max-width: 52%; }
 /* Two-line title: the widget script splits the tagline at its comma and wraps the second part in .bx-tagline2 */
 #site_desc { margin: 0 !important; text-align: right; color: var(--bx-navy); font-size: 1.6em; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
