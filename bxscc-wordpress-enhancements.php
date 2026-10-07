@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.56
+ * Version: 1.57
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -577,6 +577,63 @@ add_action('wp_footer', function () {
 </script>
 <?php
 }, 22);
+
+/* 3h. Menu bar on one row. From 768px wide up the menu is a bar of links, and the theme let the links wrap onto a second
+       row when they did not fit (with the current six links: at every width from 768 to 1082px). theme-fixes.css keeps
+       them in one row; this script makes the top-level link text smaller, only as much as needed, until the row fits
+       the bar. The space around each link stays the same, and dropdown links keep their size. The script is printed
+       right after the menu, so it runs before the browser first draws the bar; it runs again whenever the bar's width
+       changes and when the web font finishes loading (the font changes how wide the words are). */
+add_filter('wp_nav_menu', function ($html, $args) {
+    static $done = false;
+    if ($done || !is_object($args) || ($args->theme_location ?? '') !== 'primary-menu' || get_template() !== 'news-magazine') { return $html; }
+    $done = true;
+    return $html . <<<'HTML'
+
+<script>
+(function () {
+  var bar = document.getElementById("top-nav-list");
+  if (!bar || !window.matchMedia) { return; }
+  var wide = window.matchMedia("(min-width: 768px)");   // narrower than this, the menu is the phone list, not a bar
+  var items = [], links = [];
+  for (var i = 0; i < bar.children.length; i++) {
+    var a = bar.children[i].firstElementChild;
+    if (a && a.tagName === "A") { items.push(bar.children[i]); links.push(a); }
+  }
+  if (!links.length) { return; }
+  // pixels by which the row of links runs past the right end of the bar (zero or less: it fits)
+  function overflow() { return items[items.length - 1].getBoundingClientRect().right - bar.getBoundingClientRect().right; }
+  function fit() {
+    links.forEach(function (a) { a.style.fontSize = ""; });   // back to the stylesheet's size
+    if (!wide.matches) { return; }
+    var over = overflow();
+    if (over <= 0) { return; }
+    // only the words shrink, so the words alone must give up the overflow: scale them by (words - overflow) / words
+    var words = 0, base = [];
+    links.forEach(function (a) {
+      var s = getComputedStyle(a);
+      words += a.getBoundingClientRect().width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
+      base.push(parseFloat(s.fontSize));
+    });
+    var scale = (words - over) / words;
+    // text width is almost, not exactly, proportional to font size: check, and step down a little until it fits
+    for (var n = 0; n < 40 && scale > 0.05; n++) {
+      links.forEach(function (a, k) { a.style.fontSize = Math.floor(base[k] * scale * 10) / 10 + "px"; });
+      if (overflow() <= 0) { return; }
+      scale -= 0.005;
+    }
+  }
+  fit();
+  if (window.ResizeObserver) { new ResizeObserver(fit).observe(bar); } else { window.addEventListener("resize", fit); }
+  if (document.fonts) {
+    if (document.fonts.addEventListener) { document.fonts.addEventListener("loadingdone", fit); }
+    if (document.fonts.ready) { document.fonts.ready.then(fit); }
+  }
+  window.addEventListener("load", fit);
+})();
+</script>
+HTML;
+}, 10, 2);
 
 /* 4. XML-RPC is unused on this site; turning it off removes a login brute-force surface. */
 add_filter('xmlrpc_enabled', '__return_false');

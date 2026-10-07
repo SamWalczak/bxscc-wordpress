@@ -261,6 +261,17 @@ body.single .page-navigation, body.single .navigation, body.single .post-navigat
   }
 }
 
+/* ---------- menu bar: always one row ----------
+   The theme floats the menu items, so when they do not fit the bar the last ones drop onto a second row (with the current
+   six items: at every width from 768 to 1082px). Here they sit in a row that cannot wrap, each item as wide as its words,
+   and plugin block 3h shrinks the top-level words, only as much as needed, until the row fits the bar. If the script
+   does not run, the row runs past the right end of the bar instead of making a second row. */
+@media (min-width: 768px) {
+  #top-nav > div > ul, #top-nav > div > div > ul { display: flex; flex-wrap: nowrap; }
+  #top-nav > div > ul > li, #top-nav > div > div > ul > li { flex: none; }
+  #top-nav > div > ul > li > a, #top-nav > div > div > ul > li > a { white-space: nowrap; }
+}
+
 /* footer copyright link (added by the plugin) */
 #footer-bottom a { color: var(--bx-link) !important; text-decoration: underline; text-underline-offset: 2px; }
 #footer-bottom a:hover { color: var(--bx-navy) !important; }

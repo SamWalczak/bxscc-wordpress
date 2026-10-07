@@ -26,6 +26,12 @@ At the bottom of each yearly News and Events post, a bar links to the previous y
 
 A post counts as a yearly page when its title reads "News and Events" or "News and Media" followed by a four-digit year.
 
+## Menu bar on one row
+
+From 768px wide up the menu is a bar of links. The theme floated them, so when they did not fit, the last ones dropped onto a second row (with the current six links: at every width from 768 to 1082px). `theme-fixes.css` now lays them out in a single row that cannot wrap, and block 3h makes the top-level link text smaller, only as much as needed, until the row fits the bar: 17.7px instead of 18px on tablets (768 to 1024px), 18.4px instead of 20px at 1025px, back to 20px from 1083px. The space around each link and the dropdown links keep their size. Adding or renaming menu items needs no change here; the script measures whatever the menu holds. There is no lower limit, so many more items would mean much smaller text.
+
+The script is printed right after the menu (through the `wp_nav_menu` filter, for the theme's `primary-menu` location only), so it runs before the browser first draws the bar; it runs again whenever the bar's width changes (a `ResizeObserver`) and when the web font finishes loading. Without JavaScript the row runs past the right end of the bar instead of making a second row.
+
 ## Desktop dropdown menus
 
 On screens wider than 1024px a dropdown opens while its menu item is hovered or holds keyboard focus (`theme-fixes.css`). It unrolls from the top over 0.2 seconds and fades out over 0.1 seconds when the pointer leaves; visitors whose system asks for reduced motion get no animation. The theme opened and closed them with jQuery slide animations that changed the dropdown's height; with the pointer resting near a dropdown's moving edge, each step of the animation moved the edge across the pointer and started the opposite animation, so the menu flickered until the pointer moved (for example after moving quickly from About Us to just below the middle of History). Block 3f removes the theme's hover handlers; the tap-to-open menu on tablets and phones is a separate handler and is unchanged. Keyboard users now get the dropdowns too.
