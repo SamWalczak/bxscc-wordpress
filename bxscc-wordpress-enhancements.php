@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.60
+ * Version: 1.61
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -940,8 +940,9 @@ add_filter('map_meta_cap', function ($caps, $cap) {
        The events table is created the first time this code runs, so there is nothing to activate. */
 require_once __DIR__ . '/events/events.php';
 
-/* 20. Dead links (in links/; report: Tools > Link check). Outside links are checked weekly; one that fails three weekly
-       checks in a row is swapped, as pages are built, for the Internet Archive's copy of the page. */
+/* 20. Dead links (in links/; report and settings: Tools > Link check). Outside links are checked weekly; one that fails
+       three weekly checks in a row brings an email and a choice (the Internet Archive's copy, a new address, or the
+       original), or, if set, the Archive's copy straight away. Working pages the Archive lacks are sent to it. */
 require_once __DIR__ . '/links/links.php';
 
 /* 14. Files the pages do not need. Each was checked against every page of the site (October 2026):

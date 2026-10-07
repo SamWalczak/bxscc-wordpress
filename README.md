@@ -10,7 +10,7 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Site CSS** | All site styling lives in two files in the plugin, `css/components.css` and `css/theme-fixes.css`, editable from **Appearance > Site CSS** with a saved, comparable, restorable history of every version. Dashboard editing of PHP files is switched off. | [docs/site-css.md](docs/site-css.md) |
 | **Banner** | Fixes and improvements to the theme's home page slideshow: random start slide, fast loading in viewing order, each screen downloading a photo size it needs, a placeholder while a photo loads, true crossfades, arrows that never freeze or fight the timer, and uncropped photos in the lightbox, downloaded after everything else. | [docs/banner.md](docs/banner.md) |
 | **Photos** | Photo grids for page content, a lightbox for every content photo (grouped, keyboard and swipe navigation, captions), and hand-written photo tags served in the size they are shown at. | [docs/photos.md](docs/photos.md) |
-| **Dead links** | Every link to another site is checked weekly. One that fails three weekly checks in a row is swapped, as pages are built, for the Internet Archive's copy of the page from around when the link was added; nothing in the database is edited, and a site that comes back gets its own link back. Report: **Tools > Link check**. | [docs/links.md](docs/links.md) |
+| **Dead links** | Every link to another site is checked weekly. One that fails three weekly checks in a row triggers an email; the report then offers the Internet Archive's copy of the page from around when the link was added (swapped in as pages are built), a new address (written into every page and event that has the old one), or keeping the original. A setting makes the archive swap automatic. Working pages the Archive has never captured are sent to its Save Page Now service. Report and settings: **Tools > Link check**. | [docs/links.md](docs/links.md) |
 | **Video previews** | YouTube videos show a thumbnail and load the player (privacy-enhanced mode) only when clicked. | [docs/video-previews.md](docs/video-previews.md) |
 | **Header and footer** | Two-line site title, correct social-icon labels (including a Discord icon), current copyright year with a bilingual line. | [docs/header-and-footer.md](docs/header-and-footer.md) |
 | **Dark mode** | A moon button in the header switches the site to dark colors; the choice is remembered on that device without cookies, with no flash of light colors. | [docs/dark-mode.md](docs/dark-mode.md) |
@@ -46,7 +46,7 @@ css/theme-fixes.css               patches for the News Magazine theme
 css/history/                      created by Site CSS: every saved version (not in this repository)
 events/events.php                 events storage, date wording, sections, shortcodes, yearly pages
 events/admin.php                  the Events dashboard menu
-links/links.php                   the weekly dead-link check, the archive swap, Tools > Link check, and wp bx-links
+links/links.php                   the weekly dead-link check, warnings, the archive swap, replacing addresses, Save Page Now, Tools > Link check, and wp bx-links
 fonts/                            Open Sans woff2 files and their license (SIL OFL 1.1)
 docs/                             feature documentation
 tools/migration/                  one-time scripts used to move the old hand-written event pages into the events table
@@ -61,7 +61,8 @@ tools/news-magazine/              the patch applied to the News Magazine theme's
 | Option `bx_ev_sections` | The sections (heading, rule, hand-picked events, empty message). |
 | Options `bx_ev_db_version`, `bx_ev_years_checked` | Table version; the last day the yearly-page check ran. |
 | Option `bx_ev_year_lock_YYYY` | Exists only for the moment a yearly page is being made. |
-| Options `bx_links`, `bx_links_map`, `bx_links_queue`, `bx_links_run` | Every outside link and its check history; the dead links and their archived copies; the links left in the current run; when the last run started and finished. |
+| Options `bx_links`, `bx_links_map`, `bx_links_queue`, `bx_links_run` | Every outside link with its check history, choice and Internet Archive status; the dead links swapped for archived copies; the links left in the current run; when the last run started and finished. |
+| Options `bx_links_settings`, `bx_links_pending`, `bx_links_log` | Warn or swap automatically, and where warnings go; how many dead links wait for a choice; the last 50 replacements with a new address. |
 | Transient `bx_links_lock` | Exists only while a batch of link checks runs. |
 | Scheduled events `bx_links_weekly`, `bx_links_batch` | The weekly start of the link check, and its follow-on batches. |
 | Transient `bx_css_err_<user id>` | Why a Site CSS save was refused, kept for one minute to show on the next screen. |

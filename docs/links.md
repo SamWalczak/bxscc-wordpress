@@ -1,8 +1,17 @@
 # Dead links
 
-Code: `links/links.php` (block 20 of `bxscc-wordpress-enhancements.php` loads it; block 3d does the swap). Report: **Tools > Link check**. Works with any theme.
+Code: `links/links.php` (block 20 of `bxscc-wordpress-enhancements.php` loads it; block 3d does the swap). Report and settings: **Tools > Link check**. Works with any theme.
 
-Every link from this site to another site is checked once a week. A link that fails three weekly checks in a row counts as dead, and visitors get the Internet Archive's copy of that page instead. Nothing in the database is edited: the link is swapped while each page is built, so a site that comes back gets its own link back after one good check, and the report can undo any swap.
+Every link from this site to another site is checked once a week. A link that fails three weekly checks in a row counts as dead. What happens then is a setting:
+
+- **Email a warning and wait for a choice** (the default). One email per run lists the links that died since the last warning: where each one is, the last result, and the Internet Archive's copy if it has one, with a link to the report. Nothing changes for visitors until someone chooses. The menu shows how many are waiting (**Tools > Link check 3**).
+- **Use the Internet Archive's copy automatically.** Visitors get the copy straight away; the report can still undo it or replace the address.
+
+The choices on the report, for each dead link:
+
+- **Use the archived copy.** Visitors get the copy. Pages and events are not edited: the link is swapped while each page is built, so if the site comes back (one good check), its own link returns by itself.
+- **Replace everywhere** with a new address typed in. The new address is written into every page, post, event, sidebar widget and menu item that has the old one (posts keep a revision of the old text; a link whose words are its own address shows the new address). The new address is checked from the next run on. Each replacement is listed under **Replaced with a new address** (when, old, new, how many places, by whom).
+- **Keep the original link.** No swap and no more warnings for that link (for a page the checker gets wrong). **Undo** puts it back in line.
 
 ## Why not a link-checker plugin
 
@@ -24,31 +33,43 @@ The checker asks for the page the way a browser does (following up to five redir
 - a page that now sends visitors to its site's home page (the usual sign of a deleted article);
 - a domain that now belongs to a parking or domain-sale service.
 
-**Could not check:** 401, 403, 429, 451 and 999 mean the site refuses automated visitors, so whether the page exists is unknown. These links are listed separately and never swapped. Links to private network addresses are not requested at all.
+**Could not check:** 401, 403, 429, 451 and 999 mean the site refuses automated visitors, so whether the page exists is unknown. These links are listed separately and never called dead. Links to private network addresses are not requested at all.
 
-Three failures in a row, a week or more apart, are needed (the rule Wikipedia and the Internet Archive use), so a site that is down for a day is never swapped. A blocked answer neither adds to nor resets the count. One good check resets it, and if the link was swapped, the swap ends.
+Three failures in a row, a week or more apart, are needed (the rule Wikipedia and the Internet Archive use), so a site that is down for a day is never called dead. A blocked answer neither adds to nor resets the count. One good check resets it.
 
 ## Which archived copy
 
-The Wayback Machine's index is asked for the first good (HTTP 200) capture from the year the link went on the site (the event's date, or the post's date), and if there is none, the last good capture; either way, never one from after the link started failing. So an event from 2012 links to the page as it was in 2012. A link with no capture keeps its original address and is listed as "the Internet Archive has no copy". If the Archive does not answer, it is asked again on the next run.
+The Wayback Machine's index is asked for the first good (HTTP 200) capture from the year the link went on the site (the event's date, or the post's date), and if there is none, the last good capture; either way, never one from after the link started failing. So an event from 2012 links to the page as it was in 2012. If the Archive does not answer, it is asked again on the next run.
+
+## Making sure a copy exists
+
+A dead link can only get a copy the Archive already has. So every working link is also looked up in the Archive's index once, and any page it has never captured is sent to its **Save Page Now** service (`skip_first_archive`, and no new capture if one was made in the last 30 days). On the next run the plugin asks how each request ended:
+
+- captured: done for good;
+- still pending: asked again the next week;
+- refused (usually a site that asks not to be archived; listed under **The Internet Archive would not save**): asked again after a month.
+
+If the Archive says it is busy, or asks for keys, the plugin stops sending pages for that run and tries again the next week; the report says so.
+
+**archive.org keys (optional).** Without keys the requests go in anonymously, with the Archive's lower limits (fewer captures a day and at once). With a free archive.org account, its keys (https://archive.org/account/s3.php) raise them. They go in `wp-config.php`, not the database:
+
+```
+define('BX_IA_ACCESS_KEY', '...');
+define('BX_IA_SECRET_KEY', '...');
+```
 
 ## When it runs
 
-WordPress's scheduler starts a run once a week (`bx_links_weekly`, first one an hour after the plugin is installed). The run checks links in batches of about 20 seconds, each its own background request, 30 seconds apart, so it never holds up a visitor or hits the server's time limit; one request a second at most to any one site, and about one lookup a second to the Archive. At the end, if any swap started or ended, every page's cached copy is emptied (block 18) so pages are rebuilt with the change.
+WordPress's scheduler starts a run once a week (`bx_links_weekly`, first one an hour after the plugin is installed). The run checks links in batches of about 20 seconds, each its own background request, 30 seconds apart, so it never holds up a visitor or hits the server's time limit; one request a second at most to any one site; about one request a second to the Archive's index and five seconds between Save Page Now requests. Order within a run: the checks, then copies for newly dead links, then the Save Page Now work. At the end, the warning email goes out (in the default setting), and if any swap started or ended, every page's cached copy is emptied (block 18) so pages are rebuilt with the change.
 
 WordPress's scheduler runs when someone loads a page that is not served from the cache, which on this site happens many times a day (dashboard visits, searches, missing pages). If `DISABLE_WP_CRON` is set in `wp-config.php`, a real cron job has to run `wp cron event run --due-now`.
 
-## The report
-
-**Tools > Link check** (administrators): when the last run started and finished, the next run, a **Run the check now** button (it checks only links not checked in the last six days, so it cannot rush a link to "dead"), and three lists:
-
-- **Dead:** each link, where it is (with links to edit those pages or events), when it started failing, the last result, and what visitors get. **Keep original link** stops the swap for that link for good (for a page the checker gets wrong); **Use the archived copy** restores it.
-- **Failing, not dead yet:** links that failed one or two checks in a row.
-- **Could not check.**
+The email goes through WordPress (`wp_mail`) to the address on the report, by default the site's administration email.
 
 ## Command line
 
 ```
 wp bx-links run                    # a whole run now, in the terminal (same six-day rule)
 wp bx-links list --status=dead     # or failing, blocked, ok, new
+wp bx-links save https://...       # send one page to Save Page Now and show the Archive's answer
 ```
