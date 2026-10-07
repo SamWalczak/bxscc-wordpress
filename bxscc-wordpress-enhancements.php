@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.57
+ * Version: 1.58
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -436,13 +436,24 @@ add_action('template_redirect', function () {
                 $placeholder = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
                 bx_upload_attachment_ids($urls);   // all slides in one lookup
                 foreach ($urls as $u) { $sets[] = bx_banner_srcset($u); }
+                $originals = 0;
                 for ($i = count($m[0]) - 1; $i >= 0; $i--) {
                     $tag = $m[0][$i][0];
                     $extra = $sets[$i] !== '' ? ' data-srcset="' . esc_attr($sets[$i]) . '" sizes="' . BX_BANNER_SIZES . '"' : '';
                     $deferred = str_replace(' src="', $extra . ' src="' . $placeholder . '" data-src="', $tag);
                     $segment = substr_replace($segment, $deferred, $m[0][$i][1], strlen($tag));
+                    // block 3i: a slide whose uncropped photo is on the server links to it, for the lightbox; the theme's
+                    // empty link around the slide (removed by block 3c otherwise) becomes that link
+                    $orig = bx_slide_original_url($urls[$i]);
+                    $apos = $orig !== '' ? strrpos(substr($segment, 0, $m[0][$i][1]), '<a href="">') : false;
+                    if ($apos !== false && trim(substr($segment, $apos + 11, $m[0][$i][1] - $apos - 11)) === '') {
+                        $segment = substr_replace($segment, '<a href="' . esc_url($orig) . '" class="bx-zoom bx-slide-original" aria-label="Open the full photo">', $apos, 11);
+                        $originals++;
+                    }
                 }
+                if ($originals) { $segment = preg_replace('#^id="slideshow"#', 'id="slideshow" data-bx-group=""', $segment, 1); }   // one lightbox group
                 $html = substr_replace($html, $segment, $start, $stop - $start);
+                if ($originals && ($bpos = strripos($html, '</body>')) !== false) { $html = substr_replace($html, bx_slide_originals_script(), $bpos, 0); }
                 // the preload asks for the same size the photo will use; a browser that cannot preload by srcset skips the
                 // preload rather than fetch the full-size file and then a second, smaller one
                 $js = JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP;   // no value can close the script tag
@@ -634,6 +645,108 @@ add_filter('wp_nav_menu', function ($html, $args) {
 </script>
 HTML;
 }, 10, 2);
+
+/* 3i. Banner photos open uncropped in the lightbox. The banner shows cropped copies (a wide strip); the uncropped photos
+       are plain files in wp-content/uploads/carousel-originals/, named after the slide without WordPress's endings:
+       the slide carousel2-cropped-scaled.jpg opens carousel2.jpg (any of .jpg .jpeg .png .webp). A slide with no such
+       file is not clickable. They are not in the Media Library, so WordPress makes no resized copies of them.
+       Clicking a slide opens its photo in the same lightbox as the page photos, with the other banner photos one
+       arrow away. The photos are large (3 to 13 MB), so none is fetched with the page: once the page and every
+       banner slide have finished loading, they download one at a time, at low priority, starting with the slide on
+       screen. A slide clicked before its photo has arrived is fetched right then, and a background download of a
+       different photo is stopped until it has. */
+function bx_slide_original_url($slide_url) {
+    static $files = null;
+    $up = wp_get_upload_dir();
+    if ($files === null) {
+        $files = array();
+        $dir = $up['basedir'] . '/carousel-originals';
+        foreach (is_dir($dir) ? (array) scandir($dir) : array() as $f) {
+            if (preg_match('/^(.+)\.(jpe?g|png|webp)$/i', $f, $fm)) { $files[strtolower($fm[1])] = $f; }
+        }
+    }
+    $name = strtolower(pathinfo((string) wp_parse_url($slide_url, PHP_URL_PATH), PATHINFO_FILENAME));
+    $name = preg_replace('/(-cropped)?(-scaled)?(-\d+x\d+)?$/', '', $name);   // carousel2-cropped-scaled -> carousel2
+    return isset($files[$name]) ? $up['baseurl'] . '/carousel-originals/' . rawurlencode($files[$name]) : '';
+}
+/* the script for these links; block 3d adds it at the end of the page, only on pages with such a link */
+function bx_slide_originals_script() {
+    return <<<'HTML'
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll("#slideshow a.bx-slide-original"));
+  if (!links.length) { return; }
+  var spans = Array.prototype.slice.call(document.querySelectorAll("#slideshow .bwg_slider > span"));
+  var slides = spans.map(function (s) { return s.querySelector("img"); });
+  var box = document.getElementById("bx-lightbox");
+  var shown = box ? box.querySelector("img") : null;   // the lightbox's photo
+  var urls = links.map(function (a) { return a.href; });
+  function onScreen() {   // the slide the theme shows now
+    var c = document.getElementById("bwg_current_image_key");
+    var k = c ? parseInt(c.value, 10) : 0;
+    return isNaN(k) || k < 0 || k >= spans.length ? 0 : k;
+  }
+
+  // keyboard: only the slide on screen is a Tab stop (the others are invisible)
+  function tabStops() {
+    var top = spans[onScreen()];
+    links.forEach(function (a) { a.tabIndex = top && top.contains(a) ? 0 : -1; });
+  }
+  tabStops();
+  var change = window.wdwt_bwg_change_image;
+  if (typeof change === "function") {
+    window.wdwt_bwg_change_image = function () { var r = change.apply(this, arguments); tabStops(); return r; };
+  }
+
+  // background downloads, one at a time, after everything else
+  var have = {};          // photos the browser has (or that failed: not retried)
+  var bg = null;          // the background download in progress
+  var running = false;
+  function waitingForClick() {   // the lightbox is fetching a photo the visitor asked for
+    return box && box.classList.contains("is-open") && shown.getAttribute("src") && !shown.complete;
+  }
+  function next() {
+    if (!running || bg || waitingForClick()) { return; }
+    var k = onScreen(), url = null;
+    for (var d = 0; d < spans.length && !url; d++) {   // the slide on screen first, then in viewing order
+      var a = spans[(k + d) % spans.length].querySelector("a.bx-slide-original");
+      if (a && !have[a.href]) { url = a.href; }
+    }
+    if (!url) { return; }
+    var im = new Image();
+    im.fetchPriority = "low";
+    bg = { url: url, im: im };
+    im.onload = im.onerror = function () { have[url] = true; bg = null; next(); };
+    im.src = url;
+  }
+  if (shown) {
+    // a photo opened in the lightbox: if it is one of these and not here yet, it goes first
+    new MutationObserver(function () {
+      var src = shown.getAttribute("src") ? shown.src : "";
+      if (src && urls.indexOf(src) !== -1 && !have[src] && bg && bg.url !== src) {
+        bg.im.onload = bg.im.onerror = null;
+        bg.im.removeAttribute("src");   // stops that download; it is fetched again later
+        bg = null;
+      }
+      next();
+    }).observe(shown, { attributes: true, attributeFilter: ["src"] });
+    shown.addEventListener("load", function () { if (urls.indexOf(shown.src) !== -1) { have[shown.src] = true; } next(); });
+    shown.addEventListener("error", function () { next(); });
+  }
+  // start once the page has loaded and every banner slide is in (they load after the page's first photo; give up
+  // waiting for them after 30 seconds)
+  var since = 0;
+  function whenSlidesAreIn() {
+    var pending = slides.some(function (im) { return im && (im.hasAttribute("data-src") || !im.complete); });
+    if (pending && (since += 250) < 30000) { setTimeout(whenSlidesAreIn, 250); return; }
+    var go = function () { running = true; next(); };
+    if (window.requestIdleCallback) { requestIdleCallback(go, { timeout: 2000 }); } else { setTimeout(go, 0); }
+  }
+  if (document.readyState === "complete") { whenSlidesAreIn(); } else { window.addEventListener("load", whenSlidesAreIn); }
+})();
+</script>
+HTML;
+}
 
 /* 4. XML-RPC is unused on this site; turning it off removes a login brute-force surface. */
 add_filter('xmlrpc_enabled', '__return_false');

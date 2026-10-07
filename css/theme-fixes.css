@@ -305,3 +305,8 @@ html[data-theme="dark"] #sidebar1 .widget-area > h3 { border-top-color: var(--bx
 #slideshow .bwg_slider > span.bx-loading::after { content: ""; position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid rgba(254, 204, 74, 0.25); border-top-color: var(--bx-gold); animation: bx-spin 0.9s linear infinite; }
 @keyframes bx-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { #slideshow .bwg_slider > span.bx-loading::after { animation-duration: 2.4s; } }
+/* a slide whose uncropped photo is on the server opens it in the lightbox (plugin block 3i); the link wraps an
+   absolutely placed photo and has no box of its own, so the keyboard focus ring goes on the photo */
+#slideshow a.bx-slide-original img.bwg_slideshow_image { cursor: zoom-in; }
+#slideshow a.bx-slide-original:focus { outline: none; }
+#slideshow a.bx-slide-original:focus-visible img.bwg_slideshow_image { outline: 3px solid var(--bx-gold); outline-offset: -3px; }

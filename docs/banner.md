@@ -1,6 +1,6 @@
 # Banner
 
-Code: blocks 3c and 3d of `bxscc-wordpress-enhancements.php`; styles in `css/theme-fixes.css` (carousel sections). Applies to the News Magazine theme's home page slideshow (Web-Dorado's slider, markup `#slideshow`).
+Code: blocks 3c, 3d and 3i of `bxscc-wordpress-enhancements.php`; styles in `css/theme-fixes.css` (carousel sections). Applies to the News Magazine theme's home page slideshow (Web-Dorado's slider, markup `#slideshow`).
 
 The theme's slideshow always started on the same photo, loaded every photo before showing the page, and had several bugs that made it freeze or jump. This feature keeps the theme's slideshow, with its own settings (fade length, interval, pause on hover), and fixes how it starts, loads and responds.
 
@@ -35,7 +35,24 @@ A slide whose photo has not arrived yet shows a navy box with a small gold spinn
 - **Crossfade on the first change.** The theme's fade only animates the incoming slide and relies on the outgoing one having an animation left over from an earlier fade. The start slide never had one, so the first change cut to navy and faded in. Every slide now gets the theme's own fade length on the first change.
 - **Photo pinned to its box.** The theme centers each photo inside table-like boxes on a text baseline, which left it 1 to 2 pixels off and showed a sliver of background above or below some photos. Each photo is now positioned to fill its slide exactly.
 - **Sized before first paint.** The theme's own sizing function runs as soon as the slideshow markup is parsed, so the size it computes later on page load is the same and nothing moves.
-- **No reload links.** The theme wraps every slide in an empty link that reloads the page when clicked; those links are removed.
+- **No reload links.** The theme wraps every slide in an empty link that reloads the page when clicked; those links are removed (or, on a slide with an uncropped photo, point to that photo: see below).
+
+## Uncropped photos in the lightbox
+
+The banner shows wide cropped copies. A slide whose uncropped photo is on the server opens that photo in the same lightbox as the page photos when clicked or tapped (or focused with Tab and opened with Enter); the lightbox's arrows step through the banner photos in slide order. A slide without one is not clickable, as before.
+
+**Where the photos go.** `wp-content/uploads/carousel-originals/`, as plain files (uploaded with the File Manager or the terminal, not the Media Library, so WordPress makes no resized copies and does not replace the file with a 2560-pixel one). Each is named after its slide without WordPress's endings: the slide `carousel2-cropped-scaled.jpg` opens `carousel2.jpg`. `.jpg`, `.jpeg`, `.png` and `.webp` all work, in any letter case. A new slide gets the same feature by adding its photo here under the matching name; nothing in the plugin changes. The page cache must be emptied afterwards, because the links are written into the page.
+
+**When they download.** They are large (3 to 13 MB, about 36 MB for the six), so none comes with the page:
+
+1. Nothing is fetched until the page's load event has fired and every banner slide has arrived (or 30 seconds after the load event, if a slide never does).
+2. Then they download one at a time, at low priority, starting with the slide on screen and going on in viewing order.
+3. A slide clicked before its photo has arrived is fetched right then. A background download of a different photo is stopped, and the queue waits until the clicked photo has arrived; the stopped one is fetched again later. Arrows in the lightbox count as clicks.
+4. The server lets browsers keep these files for 7 days, so a later visit takes them from the browser's cache.
+
+The script that does this is added to the end of the page only when the page has such a slide.
+
+Current photos (October 2026): slides 1, 2, 4, 6, 8 and 9. Slides 3, 5 and 7 have no uncropped photo yet.
 
 ## Arrows
 
