@@ -310,3 +310,6 @@ html[data-theme="dark"] #sidebar1 .widget-area > h3 { border-top-color: var(--bx
 #slideshow a.bx-slide-original img.bwg_slideshow_image { cursor: zoom-in; }
 #slideshow a.bx-slide-original:focus { outline: none; }
 #slideshow a.bx-slide-original:focus-visible img.bwg_slideshow_image { outline: 3px solid var(--bx-gold); outline-offset: -3px; }
+/* while the lightbox shows banner photos, the banner behind it follows without a crossfade, so on closing it is
+   already on the photo the lightbox showed */
+#slideshow.bx-held .bwg_slider > span { transition: none !important; }

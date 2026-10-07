@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.58
+ * Version: 1.59
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -157,7 +157,7 @@ add_action('wp_footer', function () {
     var thumb = link.querySelector("img");
     img.src = link.href;
     img.alt = thumb ? thumb.alt : "";
-    cap.textContent = thumb ? (thumb.title || "") : "";
+    cap.textContent = link.getAttribute("data-caption") || (thumb ? (thumb.title || "") : "");   // data-caption: banner photos (block 3i)
     var multi = group.length > 1;
     prevBtn.style.display = multi ? "" : "none";
     nextBtn.style.display = multi ? "" : "none";
@@ -447,7 +447,10 @@ add_action('template_redirect', function () {
                     $orig = bx_slide_original_url($urls[$i]);
                     $apos = $orig !== '' ? strrpos(substr($segment, 0, $m[0][$i][1]), '<a href="">') : false;
                     if ($apos !== false && trim(substr($segment, $apos + 11, $m[0][$i][1] - $apos - 11)) === '') {
-                        $segment = substr_replace($segment, '<a href="' . esc_url($orig) . '" class="bx-zoom bx-slide-original" aria-label="Open the full photo">', $apos, 11);
+                        $aid = bx_upload_attachment_id($urls[$i]);   // the slide's Caption in the Media Library is the lightbox caption
+                        $cap = $aid ? trim(wp_strip_all_tags((string) wp_get_attachment_caption($aid))) : '';
+                        $segment = substr_replace($segment, '<a href="' . esc_url($orig) . '" class="bx-zoom bx-slide-original" aria-label="Open the full photo"'
+                            . ($cap !== '' ? ' data-caption="' . esc_attr($cap) . '"' : '') . '>', $apos, 11);
                         $originals++;
                     }
                 }
@@ -654,7 +657,11 @@ HTML;
        arrow away. The photos are large (3 to 13 MB), so none is fetched with the page: once the page and every
        banner slide have finished loading, they download one at a time, at low priority, starting with the slide on
        screen. A slide clicked before its photo has arrived is fetched right then, and a background download of a
-       different photo is stopped until it has. */
+       different photo is stopped until it has.
+       Captions: the slide's Caption field in the Media Library (Media > Library > carousel2-cropped > Caption).
+       While the lightbox shows banner photos the slideshow holds still and follows it: moving left or right in the
+       lightbox moves the banner to the same photo, and on closing the banner plays on from the photo the lightbox
+       was showing. Photos from page content in the lightbox leave the slideshow alone. */
 function bx_slide_original_url($slide_url) {
     static $files = null;
     $up = wp_get_upload_dir();
@@ -719,17 +726,45 @@ function bx_slide_originals_script() {
     im.onload = im.onerror = function () { have[url] = true; bg = null; next(); };
     im.src = url;
   }
+  // the slideshow follows the lightbox: held still while the lightbox shows banner photos, moved to the photo the
+  // lightbox shows (at once, no crossfade: it is behind the lightbox), and playing again from that photo on closing
+  var slideshow = document.getElementById("slideshow");
+  var slideOf = {};
+  links.forEach(function (a) { slideOf[a.href] = spans.indexOf(a.closest(".bwg_slider > span")); });
+  var held = false;
+  var play = window.play;
+  if (typeof play === "function") {
+    // the theme restarts its timer when the pointer leaves the banner or the window regains focus; not while held
+    window.play = function () { if (held) { return; } return play.apply(this, arguments); };
+  }
+  function follow() {
+    var open = box.classList.contains("is-open");
+    var src = open && shown.getAttribute("src") ? shown.src : "";
+    var k = slideOf.hasOwnProperty(src) ? slideOf[src] : -1;
+    if (k >= 0) {
+      if (!held) { held = true; clearInterval(window.wdwts_playInterval); slideshow.classList.add("bx-held"); }
+      if (k !== onScreen() && typeof window.wdwt_bwg_change_image === "function" && window.data && window.data[k]) {
+        window.wdwt_bwg_change_image(onScreen(), k, window.data);
+      }
+    } else if (held && !open) {
+      held = false;
+      slideshow.classList.remove("bx-held");
+      if (typeof window.play === "function") { window.play(); }   // a full interval on this photo, then on as usual
+    }
+  }
   if (shown) {
-    // a photo opened in the lightbox: if it is one of these and not here yet, it goes first
     new MutationObserver(function () {
+      // a photo opened in the lightbox: if it is one of these and not here yet, it goes first
       var src = shown.getAttribute("src") ? shown.src : "";
       if (src && urls.indexOf(src) !== -1 && !have[src] && bg && bg.url !== src) {
         bg.im.onload = bg.im.onerror = null;
         bg.im.removeAttribute("src");   // stops that download; it is fetched again later
         bg = null;
       }
+      follow();
       next();
     }).observe(shown, { attributes: true, attributeFilter: ["src"] });
+    new MutationObserver(follow).observe(box, { attributes: true, attributeFilter: ["class"] });
     shown.addEventListener("load", function () { if (urls.indexOf(shown.src) !== -1) { have[shown.src] = true; } next(); });
     shown.addEventListener("error", function () { next(); });
   }

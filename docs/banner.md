@@ -52,6 +52,10 @@ The banner shows wide cropped copies. A slide whose uncropped photo is on the se
 
 The script that does this is added to the end of the page only when the page has such a slide.
 
+**Captions.** A banner photo's caption in the lightbox is the slide's **Caption** field in the Media Library (Media > Library > `carousel2-cropped` > Caption). The text is written into the page when it is built, so empty the page cache after editing a caption. A slide with an empty Caption shows no caption.
+
+**The banner follows the lightbox.** While the lightbox shows banner photos, the slideshow does not advance (the theme's timer is stopped, and its restarts, when the pointer leaves the banner or the window regains focus, are ignored). Moving left or right in the lightbox (arrows, keys or swipe) moves the banner to the same photo, without a crossfade since it is behind the lightbox. On closing, the banner is on the photo the lightbox showed and plays on from it, with a full interval before the next change; as always, it waits while the pointer is over it. Photos from the page content in the lightbox leave the slideshow alone.
+
 Current photos (October 2026): slides 1, 2, 4, 6, 8 and 9. Slides 3, 5 and 7 have no uncropped photo yet.
 
 ## Arrows
