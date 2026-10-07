@@ -1,0 +1,162 @@
+/* =====================================================================
+   BXSCC components: styling for markup the site itself writes (event and
+   page tables, photo grids, video boxes, the year bar, sub-page buttons,
+   the roster and speaker tables, the dark-mode switch).
+   Loaded by the "BXSCC WordPress Enhancements" plugin; nothing goes in Additional CSS.
+   These rules do not depend on the theme: content is matched as
+   .entry (News Magazine) or .entry-content (most other themes).
+   Colors: change the hex values in :root (light) and html[data-theme="dark"].
+   ===================================================================== */
+
+:root {
+  --bx-navy: #17203a;      /* logo navy, sampled from the 829px master */
+  --bx-gold: #fecc4a;      /* logo gold, sampled from the 829px master */
+  --bx-black: #1d1a3c;     /* logo near-black (it is a very dark indigo), sampled */
+  --bx-canvas: #efefef;    /* page background */
+  --bx-surface: #ffffff;   /* tables and sidebar */
+  --bx-text: #232323;
+  --bx-muted: #6b6b6b;     /* dates, link descriptions */
+  --bx-line: #dddddd;      /* borders, gridlines, dividers */
+  --bx-link: #074a7a;
+  --bx-nav-bg: var(--bx-navy);
+  --bx-nav-text: #ffffff;
+}
+/* Dark mode is opt-in via the switch in the sidebar (stored in localStorage, no cookies). Default is light. */
+html[data-theme="dark"] {
+  --bx-canvas: #121417;
+  --bx-surface: #1c1f24;
+  --bx-text: #e8e8e8;
+  --bx-muted: #a0a0a0;
+  --bx-line: #343842;
+  --bx-link: #8fc1ff;
+  --bx-nav-bg: #0f1a2e;
+}
+
+/* the switch: a moon icon on the header's top row, right-aligned opposite the social icons (the widget script moves it there) */
+.bx-theme-toggle { margin-left: auto; align-self: center; display: flex; }
+.bx-theme-toggle button { display: block; width: 32px; height: 32px; padding: 0; box-sizing: border-box; background: var(--bx-gold); border: 1px solid var(--bx-navy); border-radius: 0; cursor: pointer; color: var(--bx-navy); line-height: 0; transition: background-color 0.15s ease, color 0.15s ease; }
+.bx-theme-toggle button svg { display: block; margin: 0 auto; pointer-events: none; }
+.bx-theme-toggle button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bx-theme-toggle button:hover { background: var(--bx-navy); color: var(--bx-gold); }
+html[data-theme="dark"] .bx-theme-toggle button { background: var(--bx-navy); border-color: #8fc1ff; color: #8fc1ff; }
+html[data-theme="dark"] .bx-theme-toggle button:hover { background: #8fc1ff; color: var(--bx-navy); }
+
+/* ---------- content tables ---------- */
+:is(.entry, .entry-content) table { background: var(--bx-surface); border: 1px solid var(--bx-line); border-top: 2px solid var(--bx-navy) !important; width: 100%; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); }
+:is(.entry, .entry-content) td { padding: 14px 18px; vertical-align: top; line-height: 1.6; border-color: var(--bx-line) !important; }
+:is(.entry, .entry-content) td:first-child { width: 150px; font-size: 0.85em; color: var(--bx-muted); padding-top: 18px; }
+:is(.entry, .entry-content) td:first-child em { font-style: normal; }
+:is(.entry, .entry-content) td:first-child em :is(em, i) { font-style: italic; }   /* italic typed into an event's Time or note / Location */
+:is(.entry, .entry-content) td:last-child { max-width: 72ch; }
+:is(.entry, .entry-content) td[colspan] { padding-bottom: 0; }
+:is(.entry, .entry-content) h1 { font-size: 1.5em; text-align: center !important; letter-spacing: 0.01em; border: 0; padding-bottom: 0; margin: 0 0 10px; }
+:is(.entry, .entry-content) h1, :is(.entry, .entry-content) h3 { color: var(--bx-text); }
+:is(.entry, .entry-content) h3 a { color: var(--bx-link); }
+:is(.entry, .entry-content) h3 { font-size: 1.15em; text-align: center !important; margin: 0; }
+:is(.entry, .entry-content) p { line-height: 1.6; }
+
+@media (max-width: 599px) {
+  :is(.entry, .entry-content) td, :is(.entry, .entry-content) td:first-child { display: block; width: auto; }
+  :is(.entry, .entry-content) td:first-child { padding-bottom: 0; text-align: center; }
+  :is(.entry, .entry-content) td:last-child { padding-top: 4px; max-width: none; }
+}
+
+/* ---------- three-column tables (Leadership): name column flexible, email column does not wrap awkwardly ---------- */
+:is(.entry, .entry-content) table td:nth-child(2):not(:last-child) { width: auto; }
+:is(.entry, .entry-content) table td:nth-child(3) { white-space: nowrap; }
+@media (max-width: 599px) { :is(.entry, .entry-content) table td:nth-child(3) { white-space: normal; } }
+
+/* ---------- single-cell rows (Contact page): a full-width content cell, not a label cell ---------- */
+:is(.entry, .entry-content) td[colspan] { width: auto; font-size: inherit; color: var(--bx-text); padding: 14px 18px; }
+:is(.entry, .entry-content) td[colspan]:has(> h3) { padding-bottom: 0; }
+:is(.entry, .entry-content) td[colspan] p:first-child { margin-top: 0; }
+
+/* ---------- speaker table (CHINA Town Hall): narrow year column, labeled header row, two text columns of equal weight ---------- */
+:is(.entry, .entry-content) table.bx-speakers td:first-child { width: 70px; }
+:is(.entry, .entry-content) table.bx-speakers td:nth-child(2), :is(.entry, .entry-content) table.bx-speakers td:nth-child(3) { width: auto; max-width: none; white-space: normal; font-size: 0.95em; line-height: 1.5; }
+:is(.entry, .entry-content) table.bx-speakers tr.bx-thead td { background: #e6e9f0; color: var(--bx-navy); font-size: 0.85em; letter-spacing: 0.02em; padding: 10px 18px; }
+html[data-theme="dark"] :is(.entry, .entry-content) table.bx-speakers tr.bx-thead td { background: #232a3a; color: var(--bx-text); }
+@media (max-width: 599px) {
+  :is(.entry, .entry-content) table.bx-speakers td, :is(.entry, .entry-content) table.bx-speakers td:first-child { display: block; width: auto; }
+  :is(.entry, .entry-content) table.bx-speakers tr.bx-thead { display: none; }
+  :is(.entry, .entry-content) table.bx-speakers td:nth-child(3)::before { content: "Baltimore local speaker: "; font-weight: 600; }
+}
+
+/* ---------- News and Events archive links: decade label at the far left, years centered on the full width ---------- */
+.bx-years { margin: 4px 0 0; }
+.bx-years p { position: relative; margin: 0; line-height: 1.8; text-align: center; padding: 8px 72px; border-top: 1px solid var(--bx-line); }   /* equal side padding keeps the years centered on the page, and clear of the label */
+.bx-years p:first-child { border-top: 0; }
+.bx-years .bx-decade { position: absolute; left: 0; top: 8px; font-size: 0.85em; color: var(--bx-muted); letter-spacing: 0.03em; }
+.bx-years a { font-weight: 600; color: var(--bx-link); }
+.bx-years a:hover { color: var(--bx-navy); text-decoration: underline; }
+.bx-years span[aria-hidden] { color: var(--bx-line); margin: 0 4px; }
+/* too narrow for both: drop the decade labels, let the years use the full width */
+@media (max-width: 700px) {
+  .bx-years p { padding: 8px 0; }
+  .bx-years .bx-decade { display: none; }
+  /* when a decade wraps, a separator dot left dangling at the end of a line throws the centering off; use even spacing instead of dots */
+  .bx-years .bx-yrs { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; }
+  .bx-years span[aria-hidden] { display: none; }
+}
+
+
+/* previous / all / next navigation at the bottom of each year (added by the plugin): one connected bar, three equal segments */
+.bx-year-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; margin: 18px 0 0; background: var(--bx-surface); border: 1px solid var(--bx-line); border-top: 2px solid var(--bx-navy); }
+.bx-year-nav > * { display: flex; align-items: center; justify-content: center; padding: 10px 14px; text-align: center; }   /* centered vertically too, so a segment that wraps to two lines does not leave the others top-aligned */
+.bx-year-nav > * + * { border-left: 1px solid var(--bx-line); }
+.bx-year-nav a { color: var(--bx-link) !important; font-weight: 600; }
+.bx-year-nav a:hover { background: var(--bx-navy); color: var(--bx-gold) !important; }
+
+/* ---------- sub-page button bar (e.g. 2013 Trade Mission pages): same connected style as the year bar ---------- */
+.bx-subnav { display: grid; grid-template-columns: repeat(5, 1fr); margin: 10px 0 0; background: var(--bx-surface); border: 1px solid var(--bx-line); border-top: 2px solid var(--bx-navy); }
+.bx-subnav a { display: flex; align-items: center; justify-content: center; padding: 10px 12px; text-align: center; font-weight: 600; color: var(--bx-link) !important; }
+.bx-subnav a + a { border-left: 1px solid var(--bx-line); }
+.bx-subnav a:hover, .bx-subnav a.is-current { background: var(--bx-navy); color: var(--bx-gold) !important; }
+@media (max-width: 599px) {
+  .bx-subnav { grid-template-columns: 1fr; }
+  .bx-subnav a + a { border-left: 0; border-top: 1px solid var(--bx-line); }
+}
+
+/* schedule lines (2013 Trade Mission trip page): one line per time slot, tight spacing */
+:is(.entry, .entry-content) p.bx-sched { margin: 0 0 6px; }
+:is(.entry, .entry-content) p.bx-sched:last-child { margin-bottom: 0; }
+
+/* ---------- photo grid that always shows every photo (History page): 4 across, 3 on tablets, 2 on phones ---------- */
+.bx-grid.bx-grid-all { grid-template-columns: repeat(4, 1fr); }
+.bx-grid.bx-grid-all a { display: block !important; }
+@media (max-width: 899px) { .bx-grid.bx-grid-all { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 599px) { .bx-grid.bx-grid-all { grid-template-columns: repeat(2, 1fr); } }
+
+/* lightbox captions: honor line breaks so a bilingual caption shows English and Chinese on separate lines */
+.bx-lightbox p { white-space: pre-line; }
+
+
+html[data-theme="dark"] :is(.entry, .entry-content) table { border-top-color: var(--bx-gold) !important; }
+
+html[data-theme="dark"] .bx-year-nav, html[data-theme="dark"] .bx-subnav { border-top-color: var(--bx-gold) !important; }
+
+/* ---------- Leadership: Officers and Subcommittees tables share the same column widths ----------
+   fixed layout so each table uses the colgroup widths instead of sizing columns to its own content */
+:is(.entry, .entry-content) table.bx-roster { table-layout: fixed; }
+:is(.entry, .entry-content) table.bx-roster col.bx-c-role { width: 32%; }
+:is(.entry, .entry-content) table.bx-roster col.bx-c-name { width: 22%; }
+:is(.entry, .entry-content) table.bx-roster col.bx-c-email { width: 46%; }
+:is(.entry, .entry-content) table.bx-roster td { width: auto !important; }
+:is(.entry, .entry-content) table.bx-roster td:nth-child(3) { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 599px) { :is(.entry, .entry-content) table.bx-roster { table-layout: auto; } }
+
+/* Two-column rows: line up the first line of the label with the first line of the text beside it.
+   Baseline alignment lines up the text itself, so the label's smaller font and the paragraph's
+   top margin no longer push the two apart. Rows that open with a photo or video stay top-aligned. */
+@media (min-width: 600px) {
+  :is(.entry, .entry-content) td { vertical-align: baseline; }
+  :is(.entry, .entry-content) td:first-child { padding-top: 14px; }
+  :is(.entry, .entry-content) tr:has(> td > :first-child img, > td > figure:first-child, > td > .bx-video:first-child, > td > iframe:first-child) > td { vertical-align: top; }
+}
+
+/* ---------- event sections (BXSCC Events plugin): space between stacked sections; the "nothing scheduled" line ----------
+   A section with nothing to show prints nothing, so the spacing never doubles up. */
+.bx-section { display: flow-root; }   /* each table keeps its 8px bottom margin inside its section, as on the old hand-made pages */
+.bx-section + .bx-section { margin-top: 24px; }   /* the old 24px spacer between sections: 8 + 24 = 32px from a table to the next heading */
+.bx-section:not(:has(~ .bx-section table)) > table:last-child { margin-bottom: 0; }   /* the page's last table ends flush, like #content .entry > table:last-of-type */
+.bx-ev-empty { margin: 0; text-align: center; font-style: italic; }

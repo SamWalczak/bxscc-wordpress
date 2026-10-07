@@ -1,0 +1,266 @@
+/* =====================================================================
+   BXSCC theme fixes: patches for the News Magazine theme only (header,
+   menu, sidebar, carousel, footer, page titles, mobile layout).
+   Loaded by the "BXSCC WordPress Enhancements" plugin; nothing goes in Additional CSS.
+
+   IF THE SITE CHANGES THEMES: these rules target News Magazine's own
+   markup (#top-nav, #sidebar1, #header_part, ...) and will misfire on any
+   other theme. Turn them off by deleting this file (or emptying it); the
+   site's own content keeps its styling from components.css.
+   Each block says what it fixes, so a single block can be removed safely.
+   ===================================================================== */
+
+html[data-theme="dark"] body, html[data-theme="dark"] #content, html[data-theme="dark"] .entry, html[data-theme="dark"] .entry td, html[data-theme="dark"] .entry p,
+html[data-theme="dark"] #sidebar1 .sidebar-container, html[data-theme="dark"] #sidebar1 .textwidget { color: var(--bx-text) !important; }
+html[data-theme="dark"] .entry a, html[data-theme="dark"] #sidebar1 a { color: var(--bx-link) !important; }
+html[data-theme="dark"] #footer-bottom, html[data-theme="dark"] #footer { background: var(--bx-canvas) !important; color: var(--bx-muted) !important; }
+html[data-theme="dark"] #site_desc { color: var(--bx-text) !important; }
+
+/* ---------- page canvas ---------- */
+body, header, #header, #header-top, body > .container, #slideshow, .home #slideshow .container, .home .slider_contener_for_exklusive, .home .bwg_slideshow_image_wrap, .home .bwg_slideshow_image_container, .home .bwg_slide_container, .home .bwg_slide_bg, #header-container, #header_part { background-color: var(--bx-canvas) !important; }
+body > .container { padding-bottom: 30px; }
+
+/* ---------- carousel: start at the final shape (container width x 360/1024) so the theme's sizing script changes nothing; crop instead of stretch ---------- */
+.bwg_slideshow_image_wrap { height: auto; aspect-ratio: 1024 / 360; }
+.bwg_slideshow_image { object-fit: cover !important; object-position: 50% 35%; }
+/* visible arrows: navy discs with gold chevrons, replacing the theme's 10px background images */
+#spider_slideshow_left, #spider_slideshow_right { width: 44px !important; height: 44px !important; margin-top: -22px !important; border-radius: 50%; background: rgba(23, 32, 58, 0.72) !important; display: flex !important; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.15s ease; }
+#spider_slideshow_left:hover, #spider_slideshow_right:hover { opacity: 1; }
+#spider_slideshow_left { left: 14px !important; }
+#spider_slideshow_right { right: 14px !important; }
+#spider_slideshow_left-ico, #spider_slideshow_right-ico { display: none !important; }
+#spider_slideshow_left::before, #spider_slideshow_right::before { content: ""; width: 12px; height: 12px; border-top: 3px solid var(--bx-gold); border-right: 3px solid var(--bx-gold); }
+#spider_slideshow_left::before { transform: translateX(3px) rotate(-135deg); }
+#spider_slideshow_right::before { transform: translateX(-3px) rotate(45deg); }
+
+/* ---------- hide the "Home" page title, keep its space ---------- */
+.page-header { display: none; }
+#content .entry { padding-top: 28px; padding-bottom: 0; margin-bottom: 0 !important; }
+#content > .clear, #content .single-post > .clear { display: none; }
+#content, #content .single-post { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+#content .entry > :last-child, #content .entry > table:last-of-type { margin-bottom: 0 !important; }
+#content .entry > p:empty, #content .entry > p.wp-block-paragraph:empty, #content .navigation { display: none; }
+
+/* ---------- header: socials top-left, logo under them on the left, large title on the right ---------- */
+#header_part { position: static; background: transparent !important; }
+/* the theme draws hairlines above the logo row and above the menu; remove them */
+#header-container { border-top: 0 !important; }
+#header-top { border-bottom: 0 !important; }
+.phone-menu-block { border-top: 0 !important; }
+#header { margin-bottom: 0 !important; }
+#header_part .container { display: flex; justify-content: flex-start; padding-top: 12px; }
+#header-middle { display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 24px; padding: 0 0 12px; }
+#logo { order: 1; float: none !important; margin: 0 !important; padding: 0 !important; width: auto !important; text-align: left; line-height: 0; flex: 0 0 auto; }
+#header-middle { padding-left: 0 !important; padding-right: 0 !important; }
+#header-middle > .clear { display: none; }
+#logo { display: block !important; }
+#header_part .container, #header-container .container { text-align: left; }
+#logo img { height: 100px; width: 105px; display: block; }   /* explicit width reserves the space before the file arrives */
+#adv { order: 2; float: none !important; width: auto !important; max-width: 52%; }
+/* Two-line title: the widget script splits the tagline at its comma and wraps the second part in .bx-tagline2 */
+#site_desc { margin: 0 !important; text-align: right; color: var(--bx-navy); font-size: 1.6em; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
+#site_desc .bx-tagline2 { display: block; font-size: 0.62em; font-weight: 400; letter-spacing: 0.02em; color: var(--bx-muted); margin-top: 4px; }
+/* social icons styled like the logo's seal: gold square, navy glyph, navy border */
+/* three 32px squares with 4px gaps = 104px, the width of the 100px-tall logo below them */
+#social { float: none !important; margin: 0 0 8px !important; padding: 0; display: flex; gap: 4px; }
+#social li { width: auto !important; height: auto !important; margin: 0 !important; background: none !important; overflow: hidden; }
+#social li::before, #social li::after, #social li a::after, #social li:not(.pinterest) a::before, #social .back { display: none !important; }
+#social li a i { color: inherit !important; background: none !important; text-shadow: none !important; }
+#social li a { display: block; width: 32px; height: 32px; line-height: 30px; text-align: center; font-size: 16px; color: var(--bx-navy) !important; background: var(--bx-gold); border: 1px solid var(--bx-navy); border-radius: 0; box-sizing: border-box; transition: background-color 0.15s ease, color 0.15s ease !important; }
+/* feedback on hover: colors invert, no rotation (the theme spins the icon 360 degrees on hover) */
+#social li, #social li a i { transition: none !important; transform: none !important; animation: none !important; border-radius: 0 !important; }
+#social li:hover { transform: none !important; }
+#social li a:hover, #social li:hover a { background: var(--bx-navy); color: var(--bx-gold) !important; }
+#social li.pinterest a:hover::before { background: var(--bx-gold); }
+/* Discord: the theme has no Discord slot, so put the Discord invite URL in the theme's Pinterest field,
+   then this swaps the Pinterest icon for a Discord glyph and unhides the slot */
+#social li.pinterest { display: list-item !important; }
+#social li.pinterest a i { display: none; }
+#social li.pinterest a::before { content: ""; display: inline-block; width: 17px; height: 17px; vertical-align: middle;
+  background: currentColor; -webkit-mask: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 127.14 96.36'%3E%3Cpath d='M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15zM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 127.14 96.36'%3E%3Cpath d='M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15zM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69z'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* ---------- menu: navy bar, white links, gold marker on the current page ---------- */
+#top-nav, .phone-menu-block, #menu-button-block { background: var(--bx-nav-bg) !important; }
+#top-nav-list > li > a, .top-nav-list > ul > li > a { color: var(--bx-nav-text) !important; padding: 16px 20px !important; font-size: 1.05em; }
+#top-nav-list > li:hover, .top-nav-list li:hover { background: rgba(255,255,255,0.08) !important; }
+#top-nav-list > li:hover > a { color: var(--bx-gold) !important; }
+.top-nav-list li.current-menu-item, .top-nav-list li.current_page_item { background: transparent !important; }
+.top-nav-list li.current-menu-item > a, .top-nav-list li.current_page_item > a { color: var(--bx-gold) !important; box-shadow: inset 0 -3px 0 var(--bx-gold); }
+/* the theme colors the current top-level item blue with an ID-level selector; match it so gold wins */
+#top-nav-list li.current-menu-item > a, #top-nav-list li.current_page_item > a, #top-nav-list > li.current-menu-item > a, #top-nav-list > li.current_page_item > a { color: var(--bx-gold) !important; }
+#top-nav-list > li ul, .top-nav-list > ul > li ul { background: var(--bx-nav-bg) !important; top: 100% !important; }
+.top-nav-list *, #top-nav-list * { transition: none !important; }
+#top-nav-list > li ul > li > a { color: var(--bx-nav-text) !important; border-top: 1px solid rgba(255,255,255,0.12) !important; }
+#menu-button-block, #menu-button-block a, #menu-button-block span { color: var(--bx-nav-text) !important; border-color: rgba(255,255,255,0.2) !important; }
+/* no theme artifacts: the "arrow up" image under the current page, black hover blocks, 2px borders under items */
+#top-nav li > a, #top-nav li.current_page_item > a, #top-nav li.current-menu-item > a, #top-nav li.active > a { background-image: none !important; }
+#top-nav li, #top-nav li:hover, #top-nav li.current_page_item, #top-nav li.current-menu-item, #top-nav li.active { border-bottom: 0 !important; }
+/* dropdown items: link fills the row edge to edge, highlight on the row only */
+#top-nav > div > ul > li ul li, #top-nav > div > div > ul > li ul li { padding: 0 !important; margin: 0 !important; }
+#top-nav > div > ul > li ul li > a, #top-nav > div > div > ul > li ul li > a, #top-nav > div > ul > li ul li > a:link, #top-nav > div > ul > li ul li > a:visited { display: block !important; height: auto !important; line-height: 1.3 !important; padding: 11px 20px !important; background: transparent !important; }
+#top-nav li ul li:hover { background: rgba(255,255,255,0.08) !important; }
+#top-nav li ul li > a:hover { background: transparent !important; }
+#top-nav li ul li:hover > a { color: var(--bx-gold) !important; }
+#top-nav li ul li.current_page_item > a, #top-nav li ul li.current-menu-item > a { color: var(--bx-gold) !important; background: transparent !important; }
+
+/* ---------- sidebar ---------- */
+#sidebar1 .sidebar-container { margin-top: 24px !important; margin-bottom: 0 !important; padding-top: 0 !important; background: var(--bx-surface) !important; border: 1px solid var(--bx-line); border-top: 2px solid var(--bx-navy); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); }
+#sidebar1 .sidebar-container > .widget-area:first-child { padding-top: 16px; }
+#sidebar1 .widget-area { margin-bottom: 28px; }
+#sidebar1 .widget-area > h3 { font-size: 1.15em; text-align: center; color: var(--bx-text) !important; border: 0 !important; border-top: 2px solid var(--bx-navy) !important; border-bottom: 2px solid var(--bx-navy) !important; padding: 10px 0; margin: 0 0 6px; }
+#sidebar1 .textwidget > div { margin: 0 !important; }
+#sidebar1 .textwidget ul { list-style: none !important; margin: 0; padding: 0; }
+#sidebar1 .textwidget ul li { padding: 10px 0; margin: 0; border-bottom: 1px solid var(--bx-line); line-height: 1.5; text-align: center; }
+#sidebar1 .textwidget ul li:last-child { border-bottom: 0; }
+#sidebar1 .textwidget ul li:before { display: none !important; }
+#sidebar1 .textwidget ul li a { font-weight: 600; }
+#sidebar1 .textwidget ul li em { display: block; font-style: normal; font-size: 0.85em; color: var(--bx-muted); margin-top: 2px; }
+#sidebar1 .widget_custom_html { text-align: center; padding-top: 14px; line-height: 1.5; }
+#sidebar1 .widget_custom_html form { margin-top: 10px !important; }
+#sidebar1 .widget_media_image { text-align: center; }
+
+/* ---------- desktop: sidebar one window tall, badge at the bottom, scroll lock when the window is tall enough ---------- */
+@media (min-width: 768px) {
+  #sidebar1 .sidebar-container { display: flex; flex-direction: column; box-sizing: border-box; min-height: calc(100vh + 2px); padding-bottom: 0 !important; }
+  .admin-bar #sidebar1 .sidebar-container { min-height: calc(100vh - 30px); }
+  #sidebar1 .sidebar-container > .clear { display: none; }
+  #sidebar1 .widget_media_image { margin-top: auto; margin-bottom: 0; padding: 10px 0; }
+}
+@media (min-width: 768px) and (min-height: 880px) {
+  #sidebar1 { position: sticky; top: -26px; align-self: flex-start; will-change: transform; }
+  .admin-bar #sidebar1 { top: 6px; }
+  /* no shadow while pinned: a soft-edged full-height box is expensive to repaint every scroll frame */
+  #sidebar1 .sidebar-container { box-shadow: none; }
+}
+
+/* the mobile-only parent link item is hidden on desktop dropdowns */
+@media (min-width: 768px) { #top-nav li.bx-parent-item { display: none !important; } }
+
+/* ---------- stacked layouts (tablet and phone): content above sidebar in CSS, so the theme script has nothing to move ---------- */
+@media (max-width: 1024px) {
+  body > .container { display: flex; flex-direction: column; }
+  body > .container > #content { order: 1; width: 100% !important; float: none !important; }
+  body > .container > #sidebar1 { order: 2; width: 100% !important; float: none !important; }
+  body > .container > .clear { display: none; }
+}
+
+/* ---------- tablets: keep the sidebar as one full-width column ---------- */
+@media (max-width: 1024px) and (min-width: 768px) {
+  #sidebar1 .sidebar-container .widget-area { width: 100% !important; max-width: none !important; float: none !important; margin: 0 0 20px !important; padding: 0 !important; }
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 767px) {
+  /* menu button: full-width navy bar with a gold label and hamburger */
+  #menu-button-block { display: flex !important; align-items: center; justify-content: space-between; width: 100% !important; height: auto !important; padding: 12px 16px !important; box-sizing: border-box; background: var(--bx-nav-bg) !important; border: 0 !important; }
+  #menu-button-block .active_menu_responsive { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 !important; }
+  #menu-button-block span { color: var(--bx-gold) !important; font-size: 1.05em; letter-spacing: 0.04em; }
+  #trigram-for-heaven { color: var(--bx-gold); }
+  /* the opened list: navy panel, roomy white links, gold current page */
+  #top-nav { top: 100% !important; }
+  #top-nav > div ul, #top-nav > div > div ul { background: var(--bx-nav-bg) !important; }
+  #top-nav > div > ul li, #top-nav > div > div > ul li { border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+  #top-nav > div > ul li a, #top-nav > div > div > ul li a { height: auto !important; padding: 14px 18px !important; font-size: 1.05em !important; color: var(--bx-nav-text) !important; background-image: none !important; }
+  #top-nav > div > ul > li ul li a, #top-nav > div > ul > li ul li a:link, #top-nav > div > ul > li ul li a:visited,
+  #top-nav > div > div > ul > li ul li a, #top-nav > div > div > ul > li ul li a:link, #top-nav > div > div > ul > li ul li a:visited { padding: 12px 18px 12px 40px !important; font-size: 0.95em !important; }
+  #top-nav > div ul li ul, #top-nav > div > div ul li ul { background: rgba(0,0,0,0.22) !important; }
+  #top-nav > div > ul > li ul li, #top-nav > div > div > ul > li ul li { border-top: 1px solid rgba(255,255,255,0.06) !important; }
+  /* the link to the parent page at the top of each dropdown */
+  #top-nav a.bx-parent-link { font-style: italic; }
+  #top-nav-list > li ul > li, .top-nav-list > ul > li ul li, #top-nav > div > ul li ul li, #top-nav > div > div > ul li ul li { background: transparent !important; }
+  #top-nav > div > ul li ul li > a, #top-nav > div > div > ul li ul li > a, .top-nav-list li ul li > a, .top-nav-list li ul li > a:link, .top-nav-list li ul li > a:visited, #top-nav-list > li ul > li > a { color: var(--bx-nav-text) !important; background: transparent !important; background-image: none !important; }
+  .top-nav-list li ul li.current_page_item > a, .top-nav-list li ul li.current-menu-item > a { color: var(--bx-gold) !important; }
+  #top-nav li.current-menu-item > a, #top-nav li.current_page_item > a { color: var(--bx-gold) !important; box-shadow: none; }
+  /* keep the divider under the current page's row (the desktop rule that removes item borders would otherwise win) */
+  #top-nav li.current_page_item, #top-nav li.current-menu-item, #top-nav li.active { border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+  #top-nav li.haschild > a { background-image: none !important; }
+  /* opened menu pushes the page down instead of floating over it, so tapping Menu again closes it cleanly */
+  #top-nav { position: static !important; width: 100% !important; }
+  /* the theme prints the list before the button; reorder so the button is on top and the list drops below it */
+  header { display: flex; flex-direction: column; }
+  header > #header { order: 0; }
+  header > #menu-button-block { order: 1; }
+  header > .phone-menu-block { order: 2; }
+  header > #slideshow { order: 3; }
+  /* no white highlight on the current page or on tap; navy throughout, gold text for current */
+  #top-nav li > a, #top-nav li > a:hover, #top-nav li > a:focus, #top-nav li > a:active,
+  #top-nav li.current_page_item > a, #top-nav li.current-menu-item > a, #top-nav li.current-menu-ancestor > a,
+  #top-nav li.current_page_item, #top-nav li.current-menu-item { background: var(--bx-nav-bg) !important; }
+  #top-nav li > a:hover, #top-nav li > a:focus, #top-nav li > a:active { background: rgba(255,255,255,0.08) !important; }
+  /* a single hamburger icon on the right, drawn in CSS; the theme's glyph and the word "Menu" are hidden */
+  #menu-button-block { padding: 10px 16px !important; }
+  #menu-button-block .active_menu_responsive { justify-content: flex-end; align-items: center; }
+  #menu-button-block .active_menu_responsive > span:first-child { display: none !important; }
+  #menu-button-block .active_menu_responsive > span:last-child { font-size: 0 !important; line-height: 0; padding: 0 !important; width: 28px; height: 20px; display: block;
+    background: linear-gradient(var(--bx-gold) 0 3px, transparent 3px 8.5px, var(--bx-gold) 8.5px 11.5px, transparent 11.5px 17px, var(--bx-gold) 17px 20px); }
+  #menu-button-block .active_menu_responsive::before { content: "Menu"; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } /* screen readers only */
+  #menu-button-block .active_menu_responsive { position: relative; }
+  /* header row: socials left, moon right, same positions before and after the script runs */
+  #header_part .container { justify-content: space-between; padding: 12px 12px 0; box-sizing: border-box; }
+  /* sidebar widgets: full width (the theme narrows and floats them on small screens) */
+  #sidebar1 .sidebar-container .widget-area { width: 100% !important; max-width: none !important; float: none !important; margin: 0 0 20px !important; padding: 0 !important; }
+  #sidebar1 .sidebar-container { margin: 24px 0 0 !important; }
+  /* the theme's empty footer widget band */
+  #footer { display: none !important; }
+  #header-middle { flex-direction: column; align-items: center; gap: 10px; padding-top: 28px !important; }
+  #adv { max-width: 100%; }
+  /* title scales with the screen so the committee name stays on one line down to 320px; the tagline is a fixed readable size */
+  #site_desc { text-align: center; font-size: clamp(13px, 4.3vw, 1.2em); padding: 0 12px; white-space: nowrap; }
+  #site_desc .bx-tagline2 { white-space: normal; font-size: 14px; margin-top: 6px; }
+  #logo img { height: 80px; width: 84px; }
+  #spider_slideshow_left, #spider_slideshow_right { display: none !important; }
+}
+
+/* ---------- yearly News and Media posts: keep the title, styled like the section headings ---------- */
+body.single .page-header { display: block !important; border: 0 !important; min-height: 0; margin: 28px 0 10px !important; line-height: 1.3; }
+body.single .page-header span { position: static !important; background: none !important; padding: 0 !important; font-size: 1.5em !important; font-weight: 700; color: var(--bx-text) !important; }
+body.single #content .entry { padding-top: 4px; }
+
+/* the theme's own previous/next post links (it forces .page-navigation visible with !important): hidden, the plugin's bar replaces them */
+body.single .page-navigation, body.single .navigation, body.single .post-navigation, body.single .nav-links { display: none !important; }
+
+/* ---------- desktop menu bar: words optically centered in the navy bar ----------
+   The theme's fixed line-height plus the link padding left the words sitting high; flex centering in a fixed-height link fixes it. */
+@media (min-width: 768px) {
+  #top-nav-list > li, .top-nav-list > ul > li { height: auto !important; line-height: normal !important; }
+  #top-nav-list > li > a, .top-nav-list > ul > li > a {
+    display: flex !important; align-items: center; box-sizing: border-box;
+    height: 64px !important; line-height: 1 !important;
+    padding: 0 20px !important;
+  }
+}
+
+/* footer copyright link (added by the plugin) */
+#footer-bottom a { color: var(--bx-link) !important; text-decoration: underline; text-underline-offset: 2px; }
+#footer-bottom a:hover { color: var(--bx-navy) !important; }
+html[data-theme="dark"] #footer-bottom a:hover { color: var(--bx-gold) !important; }
+
+/* footer bar: grows to fit the two copyright lines, keeping the spacing the single line used to have
+   (about 24px above the text and 26px below it, measured from the old one-line footer) */
+#footer-bottom { height: auto !important; padding: 24px 0 26px !important; }
+#footer-bottom, #footer-bottom * { line-height: 1.6 !important; }
+
+/* ---------- dark mode: the navy delimiter rules become gold so they stay visible on the dark background ----------
+   (sidebar box and Hot Links heading lines, content table tops, the year bar and the sub-page button bar) */
+
+html[data-theme="dark"] #sidebar1 .sidebar-container { border-top-color: var(--bx-gold) !important; }
+html[data-theme="dark"] #sidebar1 .widget-area > h3 { border-top-color: var(--bx-gold) !important; border-bottom-color: var(--bx-gold) !important; }
+
+/* Page that opens with a table: drop it 6px so its top line meets the sidebar's top line
+   (measured on About Us: table 288px, sidebar 294px from the top of the window). Side-by-side layout only. */
+@media (min-width: 768px) {
+  #content .entry > table:first-child { margin-top: 6px; }
+}
+
+/* ---------- carousel placeholder: a slide whose photo has not arrived yet is a navy box with a small gold spinner
+   (the plugin marks it .bx-loading and removes the mark when the photo loads). The box is the slide itself, so
+   nothing changes size when the photo appears, and the arrows work the whole time. ---------- */
+#slideshow .bwg_slider > span { background: var(--bx-navy); }
+/* the photo fills its slide exactly: the theme nests it in table / table-cell boxes that center it on a text
+   baseline, which left it 1-2px off, so a sliver of the slide's background showed above or below some photos */
+#slideshow .bwg_slider > span img.bwg_slideshow_image { position: absolute; top: 0; left: 0; display: block; width: 100% !important; height: 100% !important; max-width: none !important; }
+#slideshow .bwg_slider > span.bx-loading img.bwg_slideshow_image { visibility: hidden; }
+#slideshow .bwg_slider > span.bx-loading::after { content: ""; position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid rgba(254, 204, 74, 0.25); border-top-color: var(--bx-gold); animation: bx-spin 0.9s linear infinite; }
+@keyframes bx-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #slideshow .bwg_slider > span.bx-loading::after { animation-duration: 2.4s; } }
