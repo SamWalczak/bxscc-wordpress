@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.49
+ * Version: 1.50
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -815,9 +815,12 @@ add_action('after_setup_theme', function () {
        page or post is saved; that works on bxscc.org. Its "purge everything" only deletes files in a cache folder on
        the same machine (/var/run/nginx-cache), which this hosting account does not have, so it empties nothing
        here (tested October 7, 2026). Site CSS is on every page and events are on many, and neither is a post, so
-       after a change to either, every page of the site is emptied the way Nginx Helper empties one. That runs once
-       per request, at the very end, after the browser has its answer where the server allows it (PHP-FPM or
-       LiteSpeed), so a save does not wait for it. Nothing happens if Nginx Helper is inactive or its purging is off. */
+       after a change to either, every page of the site is emptied the way Nginx Helper empties one: a request to
+       /purge/<page>. Nginx Helper sends those one at a time (about 60 ms each on bxscc.org, so 78 pages took about
+       5 seconds), and the site does not run PHP-FPM, so a save would wait for them; they go out ten at a time
+       instead. That runs once per request, at the very end (after the browser has its answer where the server
+       allows it: PHP-FPM or LiteSpeed). Nothing happens if Nginx Helper is inactive or its purging is off; if it
+       is set to purge some other way (deleting cache files, Redis), its own one-at-a-time purge is used. */
 function bx_purge_all_pages_soon() {
     static $queued = false;
     if (!$queued) { $queued = true; add_action('shutdown', 'bx_purge_all_pages', 100); }
@@ -832,7 +835,26 @@ function bx_purge_all_pages() {
     ignore_user_abort(true);
     if (function_exists('set_time_limit')) { @set_time_limit(300); }
     $urls = bx_site_page_urls();
-    foreach ($urls as $url) { $nginx_purger->purge_url($url, false); }
+    $by_request = (!isset($opt['cache_method']) || $opt['cache_method'] === 'enable_fastcgi')
+        && in_array(isset($opt['purge_method']) ? $opt['purge_method'] : 'get_request', array('get_request', 'get_request_torden'), true);
+    if (!$by_request || !class_exists('\WpOrg\Requests\Requests')) {
+        foreach ($urls as $url) { $nginx_purger->purge_url($url, false); }
+        return count($urls);
+    }
+    // the purge address, built as Nginx Helper builds it (same filters): https://<host>/purge + the page's path
+    $home = wp_parse_url(home_url());
+    $base = untrailingslashit(apply_filters('rt_nginx_helper_fastcgi_purge_url_base',
+        $home['scheme'] . '://' . $home['host'] . '/' . trim(apply_filters('rt_nginx_helper_fastcgi_purge_suffix', 'purge'), '/')));
+    $requests = array();
+    foreach ($urls as $url) {
+        $p = wp_parse_url($url);
+        $requests[] = array('url' => $base . (isset($p['path']) ? $p['path'] : '/') . (isset($p['query']) && $p['query'] !== '' ? '?' . $p['query'] : ''), 'type' => 'GET');
+    }
+    $options = array('timeout' => 15, 'connect_timeout' => 10, 'useragent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
+                     'verify' => ABSPATH . WPINC . '/certificates/ca-bundle.crt');
+    foreach (array_chunk($requests, 10) as $batch) {
+        try { \WpOrg\Requests\Requests::request_multiple($batch, $options); } catch (\Throwable $e) { /* a failed purge only leaves a page cached until it expires */ }
+    }
     return count($urls);
 }
 
