@@ -24,6 +24,21 @@ Every tile is cropped to 4:3. If the editor wraps the photos in `<p>` or adds `<
 
 The plain grid hides photos on narrower screens so a grid of ten stays two rows; the hidden ones are still in the lightbox. `bx-grid-all` is for galleries where every photo should be visible (the History page).
 
+## Photo sizes
+
+Code: block 15 of `bxscc-wordpress-enhancements.php`.
+
+WordPress gives photos inserted with **Add Media** a `srcset` (the smaller copies it made at upload) and `sizes` (how wide the photo is drawn), so each screen downloads a copy close to the size it shows. Photos written by hand, or pasted in from elsewhere, named one fixed file instead, often far larger than shown: a 3200-pixel logo shown 320 pixels wide, an 1800-pixel photo shown in a 640-pixel column.
+
+Every uploaded photo in page content without a `srcset` now gets one:
+
+- **Which copies.** The copies WordPress already made of that upload with the same proportions, none wider than the file the page names. A small copy chosen on purpose (a 232-pixel flyer) therefore stays the largest any screen gets, so no page downloads more than it did; pages that named a large file get smaller copies where those are enough. The upload is found from the photo's own address, including addresses of a resized copy (`photo-768x512.jpg`) or of the original of a photo WordPress scaled down (`photo.jpg` for `photo-scaled.jpg`). A `wp-image-123` class copied along with pasted HTML can name a different photo, so the address decides.
+- **How wide.** The photo's `width` attribute (or its file's width), capped at the content column. The cap is rounded up a little (the whole window on phones, 760 pixels on tablets, 51% of the window on desktop), never down: every photo is limited to its column's width by the theme's stylesheet, so a photo with no `width` attribute lays out exactly as it did with one file.
+- **Grid tiles** are sized as tiles: half the window on phones, a third under 900 pixels, 187 pixels under 1200, an eighth of the window above.
+- **Lightbox.** Unchanged: it opens the full-size file.
+
+Photos from other sites, and photos that are not in the Media Library, are left as they are.
+
 ## Lightbox
 
 Clicking a grid photo, or any other photo in page content, opens it large over a dark backdrop:

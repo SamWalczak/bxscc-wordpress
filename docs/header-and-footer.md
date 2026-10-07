@@ -23,6 +23,8 @@ The theme hard-codes the icon tooltips, with two wrong:
 
 The theme has no Discord slot, so the Discord invite address goes in the theme's **Pinterest** field, and `theme-fixes.css` draws a Discord logo (an inline SVG mask) in that square instead of the Pinterest one. Each icon also gets an `aria-label`, so screen readers announce the right network.
 
+The theme draws the Facebook and LinkedIn icons with the Font Awesome icon font: a 28 KB stylesheet and a 64 KB font file for two small glyphs. `theme-fixes.css` draws those two the same way as the Discord logo, as SVG masks made from Font Awesome 4.2's own outlines, sized and placed where the font put them (the glyph box is 1em tall and sits 256/1792 em below the baseline), so they look the same. The font and its stylesheet are no longer loaded ([performance-and-security.md](performance-and-security.md)). The masks take the link's text color, so hover and dark mode work as before.
+
 ## Dark-mode button
 
 The moon button is inserted after the social icon list. See [dark-mode.md](dark-mode.md).

@@ -18,6 +18,14 @@ The page is cached as a whole by the server, so the choice cannot be made in PHP
 
 As soon as the start photo has arrived, the others are fetched right away, without waiting for the rest of the page: nearest first, alternating right and left (the next slide, the previous, the one after next, and so on), four at a time. Browsers open up to six connections to one site, so two stay free for the rest of the page. A slide clicked to before its turn is fetched immediately.
 
+## Photo size
+
+The theme names each slide's full-size file, 2560 pixels wide and 340 to 640 KB, for every screen. Each slide now also carries a `srcset`: the copies WordPress already made of that photo (300, 768, 1024, 1536 and 2048 pixels wide, plus the full size), and `sizes` saying how wide the banner is drawn: the window less 20 pixels on phones, 748 pixels on tablets, three quarters of the window on desktop (`BX_BANNER_SIZES`). The browser takes the smallest copy that is sharp at that width on that screen, so a phone downloads the 1024 or 1536 copy and a desktop the 1024 to 2048 one, instead of the 2560 original everywhere.
+
+The start slide's preload asks for the same copy the slide will use. A browser too old to preload by `srcset` skips the preload rather than download the full-size file first and a smaller one after.
+
+Slides added in the theme's settings get this automatically, as long as the photo was uploaded through the Media Library (that is where the smaller copies come from).
+
 ## Placeholder while loading
 
 A slide whose photo has not arrived yet shows a navy box with a small gold spinner, the same size as the photo, so nothing resizes when the photo appears and the arrows work the whole time. The spinner slows down for visitors who ask their system for reduced motion.

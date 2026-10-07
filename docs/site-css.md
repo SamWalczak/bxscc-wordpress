@@ -11,7 +11,7 @@ All of the site's custom styling is in two files inside the plugin. Nothing goes
 | `css/components.css` | Styling for markup the site itself writes: content tables, event tables and sections, photo grids, video boxes, the year bar, sub-page button bars, the Leadership and speaker tables, the dark-mode button, and the color variables used everywhere. Content is matched as `.entry` (News Magazine) or `.entry-content` (most other themes). | No |
 | `css/theme-fixes.css` | Patches for News Magazine's own markup: header, menu, sidebar, banner, footer, page titles, phone layout, and dark-mode overrides for theme elements. | Yes: empty it if the site changes themes. |
 
-Both files are printed inline at the end of `<head>` (`wp_head`, priority 102), in that order, which is where Additional CSS used to print. Their rules therefore win over the theme's stylesheets exactly as before. Inline printing also means no extra file requests.
+Both files are printed inline at the end of `<head>` (`wp_head`, priority 102), in that order, which is where Additional CSS used to print. Their rules therefore win over the theme's stylesheets exactly as before. Inline printing also means no extra file requests. The files keep their comments for whoever edits them; visitors get the rules only, without comments and extra spacing.
 
 The colors are CSS variables at the top of `components.css`: `:root` for light mode, `html[data-theme="dark"]` for dark mode. Changing a brand color there changes it everywhere.
 
@@ -24,8 +24,8 @@ For Administrators (capability `edit_theme_options`, constant `BX_CSS_CAP` in `c
 - One tab per file, each with a short description of what belongs in it.
 - A code editor (WordPress's built-in CodeMirror) with syntax highlighting and line wrapping.
 - **What did you change?** is required. The note is shown in the history.
-- **Checks before saving.** A save is refused, with the reason, if the CSS has an unclosed comment, an unbalanced `{` or `}` (braces inside quoted strings are ignored, and the error gives the line), or the text `</style` or `<script`. Those are the mistakes that would break every page, not only one rule.
-- **History.** Every save is kept as a file in `css/history/`, named `<file>--<YYYYmmdd-HHMMSS>--<user>.css`, with the note as its first line. The 100 most recent versions per file are kept (`BX_CSS_KEEP`). The history table shows when, who and the note for each version.
+- **Checks before saving.** A save is refused, with the reason, if the CSS has an unclosed comment, an unbalanced `{` or `}` (braces inside quoted strings are ignored, and the error gives the line), or the text `</style` or `<script`, looked for both as written and with comments removed (the way visitors receive it). Those are the mistakes that would break every page, not only one rule.
+- **History.** Every save is kept as a file in `css/history/`, named `<file>--<YYYYmmdd-HHMMSS>--<user>.css`, with the note as its first line. The 100 most recent versions per file are kept (`BX_CSS_KEEP`). The history table shows when, who and the note for each version. The folder is for the dashboard only: an `index.php` stops folder listings and an `.htaccess` refuses the files to web visitors on Apache.
 - **Compare / restore.** Any earlier version opens side by side with the current file (WordPress's own diff view), with a **Restore this version** button. Restoring is itself a new history entry ("Restored the version from …"), so it can be undone the same way.
 - **Edits made outside the editor are kept.** If a file was changed by upload or in cPanel since the last save, the editor says so, and the next save first files that outside version in the history ("outside"), so nothing is lost.
 - **First visit.** Opening Site CSS for the first time records each file's current contents as a "Starting version", so there is always something to go back to.

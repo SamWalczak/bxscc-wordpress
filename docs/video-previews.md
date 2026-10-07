@@ -29,6 +29,7 @@ An embedded YouTube player loads about a megabyte of scripts and sets YouTube's 
 
 ## Behavior
 
-- The box keeps a 16:9 shape and shows the thumbnail (`i.ytimg.com/vi/ID/hqdefault.jpg`) with a navy and gold play button.
+- The box keeps a 16:9 shape and shows the thumbnail (`i.ytimg.com/vi/ID/hqdefault.jpg`) with a navy and gold play button. The thumbnail is fetched when the preview comes within about a screen (600 pixels) of view, so a page with many videos further down does not download them all on arrival.
+- `data-yt` must be a YouTube video id (11 letters, digits, `-` or `_`); a box with anything else is left as an empty box.
 - Clicking, or pressing Enter or Space when it has keyboard focus, replaces the thumbnail with the player from `youtube-nocookie.com` (YouTube's privacy-enhanced mode), already playing.
 - The box is a keyboard-focusable button (`role="button"`, `tabindex="0"`).

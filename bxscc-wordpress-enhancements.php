@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.46
+ * Version: 1.47
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -261,6 +261,7 @@ add_action('wp_footer', function () {
     var img = n ? spans[((i % n) + n) % n].querySelector("img") : null;
     if (!img || !img.getAttribute("data-src")) { if (done) { done(); } return; }
     if (done) { img.addEventListener("load", done, { once: true }); img.addEventListener("error", done, { once: true }); }
+    if (img.getAttribute("data-srcset")) { img.srcset = img.getAttribute("data-srcset"); img.removeAttribute("data-srcset"); }
     img.src = img.getAttribute("data-src");
     img.removeAttribute("data-src");
   }
@@ -299,11 +300,68 @@ add_action('wp_footer', function () {
 <?php
 }, 22);
 
+/* Banner photo widths, as laid out by the theme and theme-fixes.css: the full window less its margins on phones,
+   748px on tablets, three quarters of the window on desktop. The browser picks the smallest copy that covers this. */
+define('BX_BANNER_SIZES', '(max-width: 767px) calc(100vw - 20px), (max-width: 1199px) 748px, 75vw');
+
+/* The attachment an uploads address belongs to: the file itself, the original of an image WordPress scaled down
+   (name-scaled.jpg is the attachment, name.jpg its original), or one of its resized copies (name-768x512.jpg).
+   bx_upload_attachment_ids() looks up every address on a page in one database query and loads those attachments'
+   details in two more, instead of up to three queries per photo plus two more each for its details. */
+function bx_upload_attachment_ids($urls) {
+    static $cache = array();
+    global $wpdb;
+    $up    = wp_get_upload_dir();
+    $bhost = wp_parse_url($up['baseurl'], PHP_URL_HOST);
+    $bpath = rtrim((string) wp_parse_url($up['baseurl'], PHP_URL_PATH), '/') . '/';
+    $want  = array();   // address => candidate paths inside uploads, best first
+    foreach (array_unique($urls) as $url) {
+        if (isset($cache[$url])) { continue; }
+        $cache[$url] = 0;
+        $host = wp_parse_url($url, PHP_URL_HOST);
+        $path = (string) wp_parse_url($url, PHP_URL_PATH);
+        if (($host && $host !== $bhost) || strpos($path, $bpath) !== 0) { continue; }
+        $rel  = rawurldecode(substr($path, strlen($bpath)));
+        $base = preg_replace('/-\d+x\d+(\.[a-z0-9]+)$/i', '$1', $rel);
+        $want[$url] = array_unique(array($rel, $base, preg_replace('/(\.[a-z0-9]+)$/i', '-scaled$1', $base)));
+    }
+    if ($want) {
+        $paths = array_unique(call_user_func_array('array_merge', array_values($want)));
+        $rows  = $wpdb->get_results($wpdb->prepare(
+            "SELECT post_id, meta_value FROM $wpdb->postmeta WHERE meta_key = '_wp_attached_file' AND meta_value IN ("
+            . implode(',', array_fill(0, count($paths), '%s')) . ')', $paths));
+        $found = array(); $loose = array();   // the database ignores letter case; an exact match is preferred
+        foreach ($rows as $r) { $found[$r->meta_value] = (int) $r->post_id; $loose[strtolower($r->meta_value)] = (int) $r->post_id; }
+        foreach ($want as $url => $tries) {
+            foreach ($tries as $t) { if (isset($found[$t])) { $cache[$url] = $found[$t]; continue 2; } }
+            foreach ($tries as $t) { if (isset($loose[strtolower($t)])) { $cache[$url] = $loose[strtolower($t)]; continue 2; } }
+        }
+        if ($found) { _prime_post_caches(array_values($found), false, true); }
+    }
+    $out = array();
+    foreach ($urls as $url) { $out[$url] = $cache[$url]; }
+    return $out;
+}
+function bx_upload_attachment_id($url) {
+    $ids = bx_upload_attachment_ids(array($url));
+    return $ids[$url];
+}
+/* srcset for a banner photo: every copy WordPress made with the same proportions, plus the full size */
+function bx_banner_srcset($url) {
+    $id = bx_upload_attachment_id($url);
+    if (!$id) { return ''; }
+    $meta = wp_get_attachment_metadata($id);
+    if (empty($meta['width'])) { return ''; }
+    $set = wp_calculate_image_srcset(array((int) $meta['width'], (int) $meta['height']), wp_get_attachment_url($id), $meta, $id);
+    return $set ? $set : '';
+}
+
 /* 3d. Rewrite the header in PHP before the page is sent, so the browser never has to move anything:
       correct social tooltips, two-line title, moon button in the top row. The JS above is now only a fallback. */
 add_action('template_redirect', function () {
     if (is_admin() || is_feed() || (defined('REST_REQUEST') && REST_REQUEST)) { return; }
-    ob_start(function ($html) {
+    ob_start(function ($page) {
+        $html = $page;
         $html = str_replace('title="Pinterest"', 'title="Discord" aria-label="Discord"', $html);
         $html = str_replace('title="LinkEdin"', 'title="LinkedIn" aria-label="LinkedIn"', $html);
         // footer: current year, Baltimore Sister Cities link, Chinese line (all inside the existing copyright line)
@@ -344,9 +402,6 @@ add_action('template_redirect', function () {
             $html = str_replace($lm[0], str_replace('<img ', '<img fetchpriority="high" ', $lm[0]), $html);
             $preloads .= '<link rel="preload" as="image" href="' . esc_url($lm[1]) . '" fetchpriority="high">' . "\n";
         }
-        // Icon font for the social squares: preload so the glyphs are there when the squares first draw.
-        $fa = get_template_directory_uri() . '/inc/css/font-awesome/fonts/fontawesome-webfont.woff?v=4.2.0';
-        $preloads .= '<link rel="preload" as="font" type="font/woff" href="' . esc_url($fa) . '" crossorigin>' . "\n";
         if ($preloads !== '') { $html = preg_replace('#</head>#', $preloads . '</head>', $html, 1); }
         // Size the slideshow the moment its markup has been parsed, with the theme's own function, so the later
         // window.load call computes the same number and nothing moves.
@@ -356,28 +411,43 @@ add_action('template_redirect', function () {
         // choice is made in the visitor's browser: every slide's real address goes into data-src (the browser
         // fetches nothing yet), a script at the top of <head> picks the slide and preloads it at high priority,
         // and a script at the end of the header shows that slide in place of slide 1 before anything is painted.
+        // Only the theme's slideshow is touched: it sits in the header, before any page content.
+        $hend  = strpos($html, '</header>');
         $start = strpos($html, 'id="slideshow"');
-        $stop  = strpos($html, 'SLIDESHOW END');
-        if ($start !== false && $stop !== false && $stop > $start) {
+        $stop  = $start !== false ? strpos($html, 'SLIDESHOW END', $start) : false;
+        if ($start !== false && $stop !== false && $hend !== false && $stop < $hend) {
             $segment = substr($html, $start, $stop - $start);
+            $uploads = preg_replace('#^https?:#', '', wp_get_upload_dir()['baseurl']) . '/';
+            $urls = array(); $sets = array();
             if (preg_match_all('#<img[^>]*class="bwg_slideshow_image"[^>]*>#', $segment, $m, PREG_OFFSET_CAPTURE)) {
+                foreach ($m[0] as $img) {
+                    $u = preg_match('# src="([^"]+)"#', $img[0], $uu) ? html_entity_decode($uu[1]) : '';
+                    if (strpos(preg_replace('#^https?:#', '', $u), $uploads) !== 0) { $urls = array(); break; }   // not a photo from this site: leave the slideshow alone
+                    $urls[] = $u;
+                }
+            }
+            if ($urls) {
                 $placeholder = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-                $urls = array();
-                foreach ($m[0] as $img) { $urls[] = preg_match('# src="([^"]+)"#', $img[0], $u) ? html_entity_decode($u[1]) : ''; }
+                bx_upload_attachment_ids($urls);   // all slides in one lookup
+                foreach ($urls as $u) { $sets[] = bx_banner_srcset($u); }
                 for ($i = count($m[0]) - 1; $i >= 0; $i--) {
                     $tag = $m[0][$i][0];
-                    $deferred = str_replace(' src="', ' src="' . $placeholder . '" data-src="', $tag);
+                    $extra = $sets[$i] !== '' ? ' data-srcset="' . esc_attr($sets[$i]) . '" sizes="' . BX_BANNER_SIZES . '"' : '';
+                    $deferred = str_replace(' src="', $extra . ' src="' . $placeholder . '" data-src="', $tag);
                     $segment = substr_replace($segment, $deferred, $m[0][$i][1], strlen($tag));
                 }
                 $html = substr_replace($html, $segment, $start, $stop - $start);
-                $pick = '<script>(function(){var s=' . wp_json_encode(array_values($urls), JSON_UNESCAPED_SLASHES) . ';var k=Math.floor(Math.random()*s.length);window.bxSlideStart=k;'
-                      . 'var l=document.createElement("link");l.rel="preload";l.as="image";l.href=s[k];l.setAttribute("fetchpriority","high");document.head.appendChild(l);})();</script>' . "\n";
-                $html = preg_replace_callback('#<head[^>]*>#i', function ($h) use ($pick) { return $h[0] . "\n" . $pick; }, $html, 1);
+                // the preload asks for the same size the photo will use; a browser that cannot preload by srcset skips the
+                // preload rather than fetch the full-size file and then a second, smaller one
+                $js = JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP;   // no value can close the script tag
+                $pick = '<script>(function(){var s=' . wp_json_encode(array_values($urls), $js) . ',ss=' . wp_json_encode(array_values($sets), $js) . ';var k=Math.floor(Math.random()*s.length);window.bxSlideStart=k;'
+                      . 'var l=document.createElement("link");l.rel="preload";l.as="image";if(ss[k]){if(!("imageSrcset" in l)){return;}l.imageSrcset=ss[k];l.imageSizes=' . wp_json_encode(BX_BANNER_SIZES, $js) . ';}l.href=s[k];l.setAttribute("fetchpriority","high");document.head.appendChild(l);})();</script>' . "\n";
+                $html = preg_replace_callback('#<head(\s[^>]*)?>#i', function ($h) use ($pick) { return $h[0] . "\n" . $pick; }, $html, 1);
                 $show = '<script>(function(){var sp=document.querySelectorAll("#slideshow .bwg_slider > span"),n=sp.length,k=window.bxSlideStart||0;if(!n){return;}if(k>=n){k=0;}'
                       // every slide whose photo has not arrived shows a placeholder box (navy, with a small spinner) until it does
                       . 'Array.prototype.forEach.call(sp,function(s){var im=s.querySelector("img");if(!im){return;}function done(){if(im.naturalWidth>1||!im.getAttribute("data-src")&&im.complete){s.classList.remove("bx-loading");}}'
                       . 'if(im.getAttribute("data-src")||!im.complete||im.naturalWidth<2){s.classList.add("bx-loading");}im.addEventListener("load",done);im.addEventListener("error",function(){s.classList.remove("bx-loading");});});'
-                      . 'function ld(i){var im=sp[((i%n)+n)%n].querySelector("img[data-src]");if(im){im.src=im.getAttribute("data-src");im.removeAttribute("data-src");}return im;}'
+                      . 'function ld(i){var im=sp[((i%n)+n)%n].querySelector("img[data-src]");if(im){var ss=im.getAttribute("data-srcset");if(ss){im.srcset=ss;im.removeAttribute("data-srcset");}im.src=im.getAttribute("data-src");im.removeAttribute("data-src");}return im;}'
                       . 'if(k!==0){sp[0].style.opacity=0;sp[0].style.zIndex=1;sp[k].style.opacity=1;sp[k].style.zIndex=2;'
                       . 'var c=document.getElementById("bwg_current_image_key");if(c){c.value=k;}'
                       . 'if(window.data&&data[k]){[[".bwg_slideshow_title_text","alt"],[".bwg_slideshow_description_text","description"]].forEach(function(p){var el=document.querySelector(p[0]);if(el){el.innerHTML=data[k][p[1]]||"";el.classList.toggle("none",!el.innerHTML);}});}}'
@@ -396,7 +466,9 @@ add_action('template_redirect', function () {
                 $html = preg_replace_callback('#</header>#', function () use ($show) { return $show . '</header>'; }, $html, 1);
             }
         }
-        return $html;
+        // a step that fails (a regular expression that hits PHP's limits returns nothing) must not blank the page, which
+        // the page cache would then keep: send the page as WordPress made it instead
+        return (is_string($html) && $html !== '') ? $html : $page;
     });
 }, 1);
 
@@ -524,7 +596,7 @@ add_filter('the_content', function ($content) {
     if (!preg_match('/News\s*(and|&|&amp;)\s*(Media|Events)\D*(\d{4})/i', html_entity_decode($title), $m)) { return $content; }
     $year = (int) $m[3];
     $byYear = array();
-    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1)) as $p) {
+    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false)) as $p) {
         if (preg_match('/News\s*(and|&|&amp;)\s*(Media|Events)\D*(\d{4})/i', html_entity_decode(get_the_title($p)), $pm)) {
             $byYear[(int) $pm[3]] = get_permalink($p);
         }
@@ -559,9 +631,15 @@ add_action('wp_footer', function () {
 ?>
 <script>
 (function () {
+  // thumbnails are fetched from YouTube only when a preview comes within about a screen of view
+  var io = "IntersectionObserver" in window ? new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { thumb(e.target); io.unobserve(e.target); } });
+  }, { rootMargin: "600px 0px" }) : null;
+  function thumb(box) { box.style.backgroundImage = "url('https://i.ytimg.com/vi/" + box.getAttribute("data-yt") + "/hqdefault.jpg')"; }
   document.querySelectorAll(".bx-video[data-yt]").forEach(function (box) {
     var id = box.getAttribute("data-yt");
-    box.style.backgroundImage = "url('https://i.ytimg.com/vi/" + id + "/hqdefault.jpg')";
+    if (!/^[A-Za-z0-9_-]{11}$/.test(id)) { return; }   // YouTube video ids are 11 letters, digits, - or _
+    if (io) { io.observe(box); } else { thumb(box); }
     box.setAttribute("role", "button");
     box.setAttribute("tabindex", "0");
     if (!box.getAttribute("aria-label")) { box.setAttribute("aria-label", "Play video"); }
@@ -588,12 +666,14 @@ add_action('wp_footer', function () {
        css/components.css   the site's own markup (tables, grids, year bar, ...); works with any theme
        css/theme-fixes.css  patches for the News Magazine theme only; delete it if the theme ever changes
        Printed inline at the very end of <head>, the same place Additional CSS used to print, so the rules
-       win over the theme's own styles exactly as before. Edit the files in cPanel File Manager. */
+       win over the theme's own styles exactly as before, without their comments. Edit them in Appearance > Site CSS. */
 add_action('wp_head', function () {
     foreach (array('components', 'theme-fixes') as $name) {
         $file = __DIR__ . '/css/' . $name . '.css';
         if (is_readable($file)) {
-            echo '<style id="bx-' . $name . '">' . "\n" . str_replace('</style', '', file_get_contents($file)) . "</style>\n";
+            $css = preg_replace('#/\*.*?\*/#s', '', file_get_contents($file));   // the files keep their comments for whoever edits them;
+            $css = trim(preg_replace('/\s+/', ' ', $css));                       // visitors get the rules only
+            echo '<style id="bx-' . $name . '">' . str_ireplace('</style', '<\/style', $css) . "</style>\n";   // can never end the style block
         }
     }
 }, 102);
@@ -609,3 +689,62 @@ add_filter('map_meta_cap', function ($caps, $cap) {
 /* 13. Events, Sections and the automatic yearly pages (in events/; dashboard menu: Events; help: Events > How it works).
        The events table is created the first time this code runs, so there is nothing to activate. */
 require_once __DIR__ . '/events/events.php';
+
+/* 14. Files the pages do not need. Each was checked against every page of the site (October 2026):
+       - the theme's jQuery UI effects (explode, slide, transfer and their core): nothing calls them;
+       - comment-reply.js: no page shows a comment form;
+       - Font Awesome's stylesheet and its 64 KB icon font: it drew only the Facebook and LinkedIn squares, which
+         theme-fixes.css now draws itself from the same outlines;
+       - the block editor's styles (block library, global styles, classic theme styles): no page uses blocks.
+       If any of these is ever needed again, delete its line. Global styles (9 KB of block colour and layout classes
+       no page uses) are not a plain file: WordPress builds them on every page load and prints them from the footer,
+       so they are switched off at the source instead (the two remove_action lines). */
+add_action('wp_enqueue_scripts', function () {
+    foreach (array('jquery-effects-explode', 'jquery-effects-slide', 'jquery-effects-transfer', 'jquery-effects-core', 'comment-reply') as $h) { wp_dequeue_script($h); }
+    foreach (array('wdwt_font-awesome', 'wp-block-library', 'wp-block-library-theme', 'classic-theme-styles') as $h) { wp_dequeue_style($h); }
+}, 100);
+remove_action('wp_enqueue_scripts', 'wp_enqueue_global_styles');
+remove_action('wp_footer', 'wp_enqueue_global_styles', 1);
+
+/* 15. Photos in page content come in the size they are shown at. WordPress does this for images inserted with
+       Add Media; hand-written image tags named one fixed file, often far larger than shown. Each such image gets a
+       srcset of the copies WordPress already made (same proportions, none wider than the file it names), and sizes
+       saying how wide it is shown: its width attribute, capped at the content column. Photo-grid tiles are sized as tiles. */
+add_filter('the_content', function ($c) {   // runs after shortcodes (priority 11, registered later), before WordPress's image pass (12)
+    // look up every uploaded photo on the page at once (see bx_upload_attachment_ids)
+    if (preg_match_all('#<img(?![^>]*\ssrcset=)[^>]*\ssrc="([^"]*/wp-content/uploads/[^"]+)"#', $c, $m)) {
+        bx_upload_attachment_ids(array_map('html_entity_decode', $m[1]));
+    }
+    if (strpos($c, 'bx-grid') === false) { return $c; }
+    $r = preg_replace_callback('#<div class="bx-grid[^"]*">.*?</div>#s', function ($m) { return str_replace('<img ', '<img data-bx-tile="1" ', $m[0]); }, $c);
+    return is_string($r) ? $r : $c;
+}, 11);
+add_filter('wp_content_img_tag', function ($img, $context, $id) {
+    $tile = strpos($img, 'data-bx-tile="1" ') !== false;
+    $img = str_replace('data-bx-tile="1" ', '', $img);
+    if (strpos($img, ' srcset=') !== false || !preg_match('/ src="([^"]+)"/', $img, $m) || strpos($m[1], '/wp-content/uploads/') === false) { return $img; }
+    $src = html_entity_decode($m[1]);
+    // the photo's own file decides which attachment it is: a wp-image-123 class copied along with pasted HTML can
+    // name a different photo (WordPress then rightly gives up), so the address is looked up first
+    $id   = bx_upload_attachment_id($src) ?: $id;
+    $meta = $id ? wp_get_attachment_metadata($id) : null;
+    if (empty($meta['width'])) { return $img; }
+    if (preg_match('/-(\d+)x(\d+)\.[a-z0-9]+$/i', $src, $d)) { $w = (int) $d[1]; $h = (int) $d[2]; } else { $w = (int) $meta['width']; $h = (int) $meta['height']; }
+    // never offer a file wider than the one the page names: a small copy chosen on purpose stays the largest a
+    // sharp phone screen gets, so no page downloads more than before (a 232px PNG flyer would otherwise become 768px)
+    $set = implode(', ', array_filter(explode(', ', (string) wp_calculate_image_srcset(array($w, $h), $src, $meta, $id)), function ($c) use ($w) {
+        return preg_match('/ (\d+)w$/', $c, $cw) && (int) $cw[1] <= $w;
+    }));
+    if (substr_count($set, ', ') < 1) { return $img; }   // fewer than two copies: nothing to choose between
+    if ($tile) {
+        $sizes = '(max-width: 599px) 50vw, (max-width: 899px) 33vw, (max-width: 1199px) 187px, 12.5vw';   // 2, 3, then 4 columns
+    } else {
+        // A photo with no width attribute is drawn at its file's own width, and with a srcset the browser takes that
+        // width from sizes. So sizes never says less than the column (phones: the window less 20px; tablets: 748px;
+        // desktop: 50.25% of the window), and rounds up: every image is capped at 100% of its column (style.css), so
+        // a little over is clipped back to the column and the photo lays out exactly as it did with one file.
+        $shown = preg_match('/ width="(\d+)"/', $img, $wa) ? (int) $wa[1] : $w;
+        $sizes = sprintf('(max-width: 767px) min(%1$dpx, 100vw), (max-width: 1199px) min(%1$dpx, 760px), min(%1$dpx, 51vw)', $shown);
+    }
+    return preg_replace('/^<img /', '<img srcset="' . esc_attr($set) . '" sizes="' . esc_attr($sizes) . '" ', $img);
+}, 10, 3);

@@ -14,6 +14,13 @@ function bx_css_files() {
 }
 function bx_css_path($name) { return dirname(__FILE__) . '/css/' . $name . '.css'; }
 function bx_css_hist_dir() { return dirname(__FILE__) . '/css/history'; }
+/* The history folder holds who saved what: it is for the dashboard only. index.php stops folder listings;
+   .htaccess refuses the files to web visitors on Apache (the cPanel web server). */
+function bx_css_protect_dir($dir) {
+    if (!is_dir($dir)) { return; }
+    if (!file_exists($dir . '/index.php')) { @file_put_contents($dir . '/index.php', "<?php // Silence is golden.\n"); }
+    if (!file_exists($dir . '/.htaccess')) { @file_put_contents($dir . '/.htaccess', "# Site CSS history: read only by the dashboard\n<IfModule mod_authz_core.c>\n  Require all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n  Deny from all\n</IfModule>\n"); }
+}
 
 /* history files: css/history/<name>--<YYYYmmdd-His>--<user>.css, with a one-line note on the first line as a comment */
 function bx_css_history($name) {
@@ -42,7 +49,7 @@ function bx_css_read_version($name, $file) {
 function bx_css_write($name, $css, $note) {
     $dir = bx_css_hist_dir();
     if (!is_dir($dir) && !wp_mkdir_p($dir)) { return 'The history folder css/history could not be created.'; }
-    if (!file_exists($dir . '/index.php')) { @file_put_contents($dir . '/index.php', "<?php // Silence is golden.\n"); }
+    bx_css_protect_dir($dir);
     $path = bx_css_path($name);
     $old = is_readable($path) ? file_get_contents($path) : '';
     if ($old === $css) { return 'No changes to save.'; }
@@ -71,7 +78,7 @@ function bx_css_seed() {
         if (!bx_css_history($name) && is_readable(bx_css_path($name))) {
             $dir = bx_css_hist_dir();
             if (wp_mkdir_p($dir)) {
-                if (!file_exists($dir . '/index.php')) { @file_put_contents($dir . '/index.php', "<?php // Silence is golden.\n"); }
+                bx_css_protect_dir($dir);
                 @file_put_contents($dir . '/' . $name . '--' . current_time('Ymd-His') . '--start.css', "/* note: Starting version (recorded when Site CSS was first opened) */\n" . file_get_contents(bx_css_path($name)));
             }
         }
@@ -91,7 +98,10 @@ function bx_css_check($css) {
         if ($c === '}') { $depth--; if ($depth < 0) { return 'There is an extra } around line ' . $line . '.'; } }
     }
     if ($depth > 0) { return 'A { is never closed with } (' . $depth . ' missing).'; }
-    if (stripos($css, '</style') !== false || stripos($css, '<script') !== false) { return 'CSS cannot contain "</style" or "<script".'; }
+    $out = preg_replace('#/\*.*?\*/#s', '', $css);   // as printed for visitors: comments removed, which could join "</sty" and "le"
+    foreach (array($css, $out) as $t) {
+        if (stripos($t, '</style') !== false || stripos($t, '<script') !== false) { return 'CSS cannot contain "</style" or "<script".'; }
+    }
     return '';
 }
 
@@ -108,17 +118,21 @@ add_action('admin_enqueue_scripts', function ($hook) {
 function bx_css_screen() {
     if (!current_user_can(BX_CSS_CAP)) { wp_die('Not allowed.'); }
     bx_css_seed();
+    bx_css_protect_dir(bx_css_hist_dir());
     $files = bx_css_files();
-    $name = isset($_GET['file']) && isset($files[$_GET['file']]) ? $_GET['file'] : 'components';
+    $name = isset($_GET['file']) && is_string($_GET['file']) && isset($files[$_GET['file']]) ? $_GET['file'] : 'components';
     $base = admin_url('themes.php?page=bx-site-css&file=' . $name);
-    $view = isset($_GET['view']) ? bx_css_clean_version(wp_unslash($_GET['view'])) : '';
+    $view = isset($_GET['view']) && is_string($_GET['view']) ? bx_css_clean_version(wp_unslash($_GET['view'])) : '';
     $msgs = array('saved' => array('success', 'Saved. The page cache was emptied; reload the site to see the change.'), 'restored' => array('success', 'That version is current again. The version it replaced is in the history.'));
     ?>
     <div class="wrap">
       <h1>Site CSS</h1>
       <?php
-      if (!empty($_GET['bx_msg']) && isset($msgs[$_GET['bx_msg']])) { echo '<div class="notice notice-' . $msgs[$_GET['bx_msg']][0] . ' is-dismissible"><p>' . esc_html($msgs[$_GET['bx_msg']][1]) . '</p></div>'; }
-      if (!empty($_GET['bx_err'])) { echo '<div class="notice notice-error"><p>Not saved: ' . esc_html(wp_unslash($_GET['bx_err'])) . '</p></div>'; }
+      if (!empty($_GET['bx_msg']) && is_string($_GET['bx_msg']) && isset($msgs[$_GET['bx_msg']])) { echo '<div class="notice notice-' . $msgs[$_GET['bx_msg']][0] . ' is-dismissible"><p>' . esc_html($msgs[$_GET['bx_msg']][1]) . '</p></div>'; }
+      // the reason a save failed is kept for this user for a minute, not carried in the address (where a crafted
+      // link could show any text in the notice)
+      $err = get_transient('bx_css_err_' . get_current_user_id());
+      if (!empty($_GET['bx_err']) && $err) { delete_transient('bx_css_err_' . get_current_user_id()); echo '<div class="notice notice-error"><p>Not saved: ' . esc_html($err) . '</p></div>'; }
       ?>
       <nav class="nav-tab-wrapper">
         <?php foreach ($files as $k => $f) { echo '<a class="nav-tab' . ($k === $name ? ' nav-tab-active' : '') . '" href="' . esc_url(admin_url('themes.php?page=bx-site-css&file=' . $k)) . '">' . esc_html($f['label']) . '</a>'; } ?>
@@ -182,30 +196,37 @@ function bx_css_screen() {
     <?php
 }
 
+function bx_css_fail($err, $back) {
+    set_transient('bx_css_err_' . get_current_user_id(), $err, MINUTE_IN_SECONDS);
+    wp_safe_redirect(add_query_arg('bx_err', 1, $back)); exit;
+}
+
 add_action('admin_post_bx_css_save', function () {
     if (!current_user_can(BX_CSS_CAP)) { wp_die('Not allowed.'); }
     check_admin_referer('bx_css_save');
     $files = bx_css_files();
-    $name = isset($_POST['file']) && isset($files[$_POST['file']]) ? $_POST['file'] : '';
+    $name = isset($_POST['file']) && is_string($_POST['file']) && isset($files[$_POST['file']]) ? $_POST['file'] : '';
     $back = admin_url('themes.php?page=bx-site-css&file=' . $name);
-    $css = isset($_POST['css64']) ? base64_decode(wp_unslash($_POST['css64']), true) : false;
-    if ($name === '' || $css === false) { wp_safe_redirect(add_query_arg('bx_err', rawurlencode('the editor did not send the CSS (is JavaScript on?).'), $back)); exit; }
+    $css = isset($_POST['css64']) && is_string($_POST['css64']) ? base64_decode(wp_unslash($_POST['css64']), true) : false;
+    if ($name === '' || $css === false) { bx_css_fail('the editor did not send the CSS (is JavaScript on?).', $back); }
     $css = str_replace("\r\n", "\n", $css);
     $err = bx_css_check($css);
     if ($err === '') { $err = bx_css_write($name, $css, isset($_POST['note']) ? sanitize_text_field(wp_unslash($_POST['note'])) : ''); }
-    wp_safe_redirect($err === '' ? add_query_arg('bx_msg', 'saved', $back) : add_query_arg('bx_err', rawurlencode($err), $back)); exit;
+    if ($err !== '') { bx_css_fail($err, $back); }
+    wp_safe_redirect(add_query_arg('bx_msg', 'saved', $back)); exit;
 });
 
 add_action('admin_post_bx_css_restore', function () {
     if (!current_user_can(BX_CSS_CAP)) { wp_die('Not allowed.'); }
     check_admin_referer('bx_css_restore');
     $files = bx_css_files();
-    $name = isset($_POST['file']) && isset($files[$_POST['file']]) ? $_POST['file'] : '';
+    $name = isset($_POST['file']) && is_string($_POST['file']) && isset($files[$_POST['file']]) ? $_POST['file'] : '';
     $back = admin_url('themes.php?page=bx-site-css&file=' . $name);
-    $ver = isset($_POST['version']) ? bx_css_clean_version(wp_unslash($_POST['version'])) : '';
+    $ver = isset($_POST['version']) && is_string($_POST['version']) ? bx_css_clean_version(wp_unslash($_POST['version'])) : '';
     $css = $name ? bx_css_read_version($name, $ver) : null;
-    if ($css === null) { wp_safe_redirect(add_query_arg('bx_err', rawurlencode('that version was not found.'), $back)); exit; }
-    $when = preg_match('/--(\d{8}-\d{6})--/', $ver, $m) ? DateTime::createFromFormat('Ymd-His', $m[1], wp_timezone())->format('M j, Y g:i a') : $ver;
-    $err = bx_css_write($name, $css, 'Restored the version from ' . $when);
-    wp_safe_redirect($err === '' ? add_query_arg('bx_msg', 'restored', $back) : add_query_arg('bx_err', rawurlencode($err), $back)); exit;
+    if ($css === null) { bx_css_fail('that version was not found.', $back); }
+    $dt = preg_match('/--(\d{8}-\d{6})--/', $ver, $m) ? DateTime::createFromFormat('Ymd-His', $m[1], wp_timezone()) : false;
+    $err = bx_css_write($name, $css, 'Restored the version from ' . ($dt ? $dt->format('M j, Y g:i a') : $ver));
+    if ($err !== '') { bx_css_fail($err, $back); }
+    wp_safe_redirect(add_query_arg('bx_msg', 'restored', $back)); exit;
 });

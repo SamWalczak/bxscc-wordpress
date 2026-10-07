@@ -1,0 +1,2 @@
+# GitHub's "Download ZIP" (git archive) leaves out the one-time migration scripts: the server does not need them
+/tools export-ignore

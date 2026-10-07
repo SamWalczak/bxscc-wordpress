@@ -132,18 +132,39 @@ function bx_ev_delete($id) {
    addresses. A year's post is an archive, so it is created only once the year is over: the current year's events
    are on the home page and News and Events, and on January 1st the year just ended gets its post (checked once a
    day). Saving an event in an earlier year that has no post yet creates that post right away. */
+function bx_ev_year_post($year) {
+    $found = get_posts(array('post_type' => 'post', 'name' => 'news-and-media-' . (int) $year, 'post_status' => array('publish', 'future', 'draft', 'private'), 'numberposts' => 1, 'fields' => 'ids', 'cache_results' => false));
+    return $found ? $found[0] : 0;
+}
 function bx_ev_year_page($year) {
     $year = (int) $year;
-    $found = get_posts(array('post_type' => 'post', 'name' => 'news-and-media-' . $year, 'post_status' => array('publish', 'future', 'draft', 'private'), 'numberposts' => 1, 'fields' => 'ids'));
-    if ($found) { return $found[0]; }
+    if ($found = bx_ev_year_post($year)) { return $found; }
     if ($year >= (int) current_time('Y')) { return 0; }   // the current year and later wait until the year is over
-    $dec31 = $year . '-12-31 12:00:00';
-    return wp_insert_post(array(
+    // two visitors arriving at the same moment on January 1st would otherwise both make the post; adding an option
+    // either succeeds or finds it already there, so only one request goes on (a lock left by a crash expires in a minute)
+    $lock = 'bx_ev_year_lock_' . $year;
+    if (!add_option($lock, time(), '', false)) {
+        if ((int) get_option($lock) > time() - 60) { return 0; }
+        update_option($lock, time(), false);
+    }
+    if ($found = bx_ev_year_post($year)) { delete_option($lock); return $found; }   // made by another request just now
+    // the author: whoever saved the event; on January 1st (made during a visitor's page load, so nobody is logged in)
+    // the author of the year before's post, or else the first administrator
+    $author = get_current_user_id();
+    if (!$author) {
+        $prev = get_posts(array('post_type' => 'post', 'name' => 'news-and-media-' . ($year - 1), 'post_status' => 'any', 'numberposts' => 1));
+        $admins = $prev ? array() : get_users(array('role' => 'administrator', 'number' => 1, 'orderby' => 'ID', 'fields' => 'ID'));
+        $author = $prev ? (int) $prev[0]->post_author : (int) reset($admins);
+    }
+    $id = wp_insert_post(array(
         'post_type' => 'post', 'post_status' => 'publish', 'post_title' => 'News and Events – ' . $year,
         'post_name' => 'news-and-media-' . $year,
-        'post_date' => $dec31,
+        'post_date' => $year . '-12-31 12:00:00',
+        'post_author' => $author,
         'post_content' => '<!-- wp:shortcode -->[bx_year year="' . $year . '"]<!-- /wp:shortcode -->',
     ));
+    delete_option($lock);
+    return $id;
 }
 add_action('init', function () {
     if (!get_option('bx_ev_db_version') || get_option('bx_ev_years_checked') === current_time('Y-m-d')) { return; }
@@ -276,7 +297,7 @@ function bx_ev_when($e) {
 }
 
 /* the gray column: date, then time, then location, each on its own line */
-/* "Time or note" and "Location" are short formatted text: links, bold, italic, and line breaks, nothing else. */
+/* Titles, "Time or note" and "Location" are short formatted text: links, bold, italic, and line breaks, nothing else. */
 function bx_ev_inline_tags() {
     return array('a' => array('href' => true, 'target' => true, 'rel' => true), 'strong' => array(), 'em' => array(), 'b' => array(), 'i' => array(), 'br' => array());
 }
@@ -309,7 +330,7 @@ function bx_ev_render($events, $empty = '') {
     }
     $h = "<table class=\"bx-events\">\n<tbody>\n";
     foreach ($events as $e) {
-        $h .= "<tr>\n<td colspan=\"2\">\n<h3 style=\"text-align: center;\"><strong>" . $e->title . "</strong></h3>\n</td>\n</tr>\n";
+        $h .= "<tr>\n<td colspan=\"2\">\n<h3 style=\"text-align: center;\"><strong>" . wp_kses($e->title, bx_ev_inline_tags()) . "</strong></h3>\n</td>\n</tr>\n";
         $h .= "<tr>\n<td><em>" . bx_ev_label($e) . "</em></td>\n<td>\n" . bx_ev_body($e->body) . "\n</td>\n</tr>\n";
     }
     return $h . "</tbody>\n</table>\n";
@@ -317,6 +338,8 @@ function bx_ev_render($events, $empty = '') {
 
 /* [bx_section name="recent"]  the section's title as a heading, then its events */
 add_shortcode('bx_section', function ($atts) {
+    static $depth = 0;   // a section placed in the description of one of its own events would otherwise repeat until PHP runs out of memory
+    if ($depth > 1) { return ''; }
     $a = shortcode_atts(array('name' => ''), $atts, 'bx_section');
     $all = bx_ev_sections();
     if (!isset($all[$a['name']])) {
@@ -327,7 +350,10 @@ add_shortcode('bx_section', function ($atts) {
     if (!$events && (isset($s['empty']) ? $s['empty'] : '') === '') { return ''; }   // nothing to show and no message: hide the whole section
     $h = '<div class="bx-section">' . "\n";
     if (!empty($s['title'])) { $h .= '<h1 style="text-align: center;"><strong>' . esc_html($s['title']) . "</strong></h1>\n"; }
-    return $h . bx_ev_render($events, isset($s['empty']) ? $s['empty'] : '') . "</div>\n";
+    $depth++;
+    $h .= bx_ev_render($events, isset($s['empty']) ? $s['empty'] : '');
+    $depth--;
+    return $h . "</div>\n";
 });
 
 /* [bx_year year="2014"]  every event that touches that year, newest first */
@@ -339,7 +365,7 @@ add_shortcode('bx_year', function ($atts) {
 /* [bx_years]  "Archives by Year": links to every yearly page, grouped by decade, newest decade first */
 add_shortcode('bx_years', function () {
     $byYear = array();
-    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1)) as $p) {
+    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false)) as $p) {
         if (preg_match('/^news-and-media-(\d{4})$/', $p->post_name, $m)) { $byYear[(int) $m[1]] = get_permalink($p); }
     }
     if (!$byYear) { return ''; }

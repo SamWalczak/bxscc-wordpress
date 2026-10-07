@@ -10,7 +10,7 @@ One row in the table `{prefix}bx_events`:
 
 | Field | Shown | Notes |
 |---|---|---|
-| Title | Across the top of the event's table row | May contain a link. |
+| Title | Across the top of the event's table row | May contain a link, bold or italic. |
 | Dates | Left column, first line | One or more *parts*; see below. |
 | Time or note | Left column, under the date | Short formatted text: a time ("6:00 to 9:00pm") or a note about the date ("Dates to be announced", "(updated date)"). Links, bold, italic and line breaks are kept; all other markup is removed. |
 | Location | Left column, under the time | Same formatting rules as Time or note. |

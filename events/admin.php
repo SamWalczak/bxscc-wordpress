@@ -193,7 +193,7 @@ add_action('admin_post_bx_ev_save', function () {
     if (!current_user_can(BX_EV_CAP)) { wp_die('Not allowed.'); }
     check_admin_referer('bx_ev_save');
     $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-    $title = isset($_POST['title']) ? trim(wp_kses(wp_unslash($_POST['title']), array('em' => array(), 'strong' => array(), 'br' => array()))) : '';
+    $title = isset($_POST['title']) ? trim(wp_kses(wp_unslash($_POST['title']), bx_ev_inline_tags())) : '';   // keeps a title's link or bold
     $parts = array();
     foreach (isset($_POST['dates']) ? (array) wp_unslash($_POST['dates']) : array() as $raw) {
         $f = bx_ev_read_point(isset($raw['f']) ? $raw['f'] : null);
