@@ -1,6 +1,6 @@
 # Performance and security
 
-Code: blocks 3d, 4, 5, 6, 10, 11, 14 and 15 of `bxscc-wordpress-enhancements.php`, plus the checks described below in `css-editor.php` and `events/`.
+Code: blocks 3d, 4, 5, 6, 10, 11, 14, 15 and 17 of `bxscc-wordpress-enhancements.php`, plus the checks described below in `css-editor.php` and `events/`.
 
 ## Security
 
@@ -37,6 +37,8 @@ What changed:
 - **jQuery Migrate stays.** It looks unused, but the theme's slideshow code calls `jQuery(window).load(...)`, which jQuery 3 removed and Migrate restores. Without it the banner would not size or start.
 - **Photos come in the size they are shown at** (block 15): see [photos.md](photos.md#photo-sizes) and [banner.md](banner.md#photo-size).
 - **One database query for all of a page's photos.** Finding which upload a photo address belongs to takes one query for every photo on the page, and their details load together, instead of up to five queries per photo.
+- **No font work for a classic theme** (block 17): WordPress worked out the fonts of a block theme's `theme.json` on every uncached page (about 6 ms) and printed nothing, since a classic theme has none.
+- **The theme's own security and efficiency issues** are covered in [news-magazine-theme.md](news-magazine-theme.md).
 - **Emoji scripts removed.** WordPress adds a script and styles to every page to draw emoji on old browsers that cannot; every current browser can.
 - **Unused theme scripts unloaded** (block 6): the theme's jQuery Mobile swipe helpers (`wdwt_jquery_mobile`), a custom scrollbar for a widget the site does not use (`wdwt_mCustomScrollbar`, script and style), and its gallery fullscreen and lightbox loaders (`wdwt_jquery-fullscreen`, `wdwt_lightbox_loader`; the plugin has its own lightbox). Some of these also attached scroll and touch handlers that made scrolling less smooth.
 - **Logo first.** The header logo gets `fetchpriority="high"` and is preloaded from `<head>`, so it is not among the last things to arrive.

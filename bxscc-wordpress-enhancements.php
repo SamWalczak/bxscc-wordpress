@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.47
+ * Version: 1.48
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -366,7 +366,10 @@ add_action('template_redirect', function () {
         $html = str_replace('title="LinkEdin"', 'title="LinkedIn" aria-label="LinkedIn"', $html);
         // footer: current year, Baltimore Sister Cities link, Chinese line (all inside the existing copyright line)
         $y = date('Y');
-        $cpos = strrpos($html, 'Copyright');   // the footer line is the last "Copyright" on the page
+        // the footer line is the theme's <span id="copyright">; searching the whole page for the last "Copyright" also
+        // found the copy of the footer text inside the Customizer preview's settings script, and broke that script
+        $anchor = strpos($html, '<span id="copyright">');
+        $cpos = $anchor !== false ? strpos($html, 'Copyright', $anchor) : false;
         if ($cpos !== false) {
             $orig = substr($html, $cpos, 80);
             $seg  = preg_replace('~^(Copyright\s*(?:&copy;|&#169;|\xC2\xA9)\s*)\d{4}~', '${1}' . $y, $orig, 1);
@@ -748,3 +751,61 @@ add_filter('wp_content_img_tag', function ($img, $context, $id) {
     }
     return preg_replace('/^<img /', '<img srcset="' . esc_attr($set) . '" sizes="' . esc_attr($sizes) . '" ', $img);
 }, 10, 3);
+
+/* 16. The News Magazine theme (Web-Dorado, version 1.1.12) was closed on WordPress.org in 2019 and will get no more
+       updates. Its parts that anyone could reach but no page of this site uses are switched off here, from outside the
+       theme, so nothing in its files changes and every feature the site uses keeps working. Details and the reasons:
+       docs/news-magazine-theme.md. Applies only while News Magazine is the active theme. */
+if (get_template() === 'news-magazine') {
+    add_action('after_setup_theme', function () {
+        // Public AJAX actions (anyone, logged in or not) for the theme's own photo lightbox and for the post lists of a
+        // blog-style home page. The site uses its own lightbox and a static home page, so nothing calls them. The
+        // lightbox one printed whatever was posted to it into a page on this site (a cross-site scripting hole), and
+        // the post-list ones listed unpublished drafts to anyone.
+        foreach (array('wdwt_lightbox' => 'wdwt_lightbox', 'wdwt_front_content_posts_section' => 'wdwt_front_pages', 'wdwt_front_top_posts_section' => 'wdwt_front_pages') as $action => $callback) {
+            remove_action('wp_ajax_' . $action, $callback);
+            remove_action('wp_ajax_nopriv_' . $action, $callback);
+        }
+        // "Please review this theme" notices: their dismiss links saved whatever any visitor sent, without a login, into
+        // a setting loaded on every page. Both notices were dismissed long ago.
+        global $wp_filter;
+        foreach (array('admin_init', 'admin_notices') as $hook) {
+            if (empty($wp_filter[$hook])) { continue; }
+            foreach ($wp_filter[$hook]->callbacks as $priority => $callbacks) {
+                foreach ($callbacks as $cb) {
+                    if (is_array($cb['function']) && $cb['function'][0] instanceof WDWT_Notices) { remove_action($hook, $cb['function'], $priority); }
+                }
+            }
+        }
+        // Appearance > News Magazine: only an "upgrade to Pro" page for a product that no longer exists and a support
+        // tab that stops with a PHP error. The theme's settings are all in Appearance > Customize, which is unchanged.
+        remove_action('admin_menu', 'WDWT_admin_menu');
+        // the recommended-plugins installer (below)
+        remove_action('admin_init', 'tgmpa_load_bulk_installer');
+    }, 20);
+
+    // "Install recommended plugins": ten of Web-Dorado's own plugins, none installed, some with serious security
+    // histories. Its plugin-information screen also answered visitors who were not logged in.
+    add_filter('tgmpa_load', '__return_false');
+
+    // Layout widths the theme does arithmetic with ("100 - main column"): an empty or non-numeric value is a PHP 8
+    // error that stops every page using it. Kept to numbers from 0 to 100, in the theme settings and in each page's
+    // own Layout box; values already valid pass through unchanged.
+    $bx_nm_layout = function ($a) {
+        if (!is_array($a)) { return $a; }
+        foreach (array('main_column' => 67, 'pwa_width' => 16, 'content_area_percent' => 75) as $k => $default) {
+            if (array_key_exists($k, $a) && !(is_numeric($a[$k]) && $a[$k] >= 0 && $a[$k] <= 100)) { $a[$k] = (string) $default; }
+        }
+        if (array_key_exists('default_layout', $a) && !in_array((string) $a['default_layout'], array('1', '2', '3', '4', '5', '6'), true)) { $a['default_layout'] = '2'; }
+        return $a;
+    };
+    add_filter('option_theme_news_magazine_options', $bx_nm_layout, 20);
+    add_filter('sanitize_post_meta__news_magazine_meta', $bx_nm_layout);
+}
+
+/* 17. WordPress prints @font-face rules for fonts chosen in a block theme's theme.json or the Font Library. A classic
+       theme has neither, but working that out (reading and merging every theme.json layer) took about 6 ms of every
+       uncached page and printed nothing. Skipped for classic themes; a block theme keeps it. */
+add_action('after_setup_theme', function () {
+    if (!wp_is_block_theme()) { remove_action('wp_head', 'wp_print_font_faces', 50); }
+});

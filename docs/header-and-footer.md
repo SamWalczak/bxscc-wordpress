@@ -31,7 +31,7 @@ The moon button is inserted after the social icon list. See [dark-mode.md](dark-
 
 ## Footer
 
-The theme's copyright line is kept and corrected each time a page is generated:
+The theme's copyright line (`<span id="copyright">`) is kept and corrected each time a page is generated:
 
 - The year becomes the current year.
 - "Baltimore Sister Cities, Inc." becomes a link to baltimoresistercities.org.

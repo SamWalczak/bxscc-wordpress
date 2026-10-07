@@ -16,6 +16,7 @@ It has no settings screen of its own. Install it, and these features are on:
 | **Layout and navigation** | Sidebar and content end level, parent-page links in the phone menu, previous / all / next bar on yearly pages, home page tab title. | [docs/layout-and-navigation.md](docs/layout-and-navigation.md) |
 | **Page markup** | The table, grid and button-bar patterns page content uses, and the CSS classes that style them. | [docs/page-markup.md](docs/page-markup.md) |
 | **Fonts** | Self-hosted Open Sans (no Google Fonts requests), with fallback metrics so text does not jump. | [docs/fonts.md](docs/fonts.md) |
+| **News Magazine theme** | The theme has had no updates since 2019. Its unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off, and its layout widths are kept valid; four small theme-file edits are in `tools/news-magazine/`. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
 | **Performance and security** | Unused scripts, styles and the icon font not loaded, emoji scripts off, key images and fonts preloaded; XML-RPC off, and how the plugin's own forms, queries and page rewrite are protected. | [docs/performance-and-security.md](docs/performance-and-security.md) |
 
 Maintenance (installing, updating, page caching, troubleshooting, changing themes): [docs/maintenance.md](docs/maintenance.md).
@@ -47,6 +48,7 @@ events/admin.php                  the Events dashboard menu
 fonts/                            Open Sans woff2 files and their license (SIL OFL 1.1)
 docs/                             feature documentation
 tools/migration/                  one-time scripts used to move the old hand-written event pages into the events table
+tools/news-magazine/              the patch applied to the News Magazine theme's own files (not part of the plugin)
 ```
 
 ## Data the plugin stores

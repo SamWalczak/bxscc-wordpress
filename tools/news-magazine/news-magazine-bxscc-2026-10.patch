@@ -1,0 +1,77 @@
+--- a/news-magazine/inc/admin/page_slider.php
++++ b/news-magazine/inc/admin/page_slider.php
+@@ -4,6 +4,7 @@
+ {
+ 
+   public $shorthomepage;
++  public $shortslider; /* BXSCC 2026-10: declared; PHP 8.2+ deprecates setting undeclared properties */
+   public $options;
+ 
+   function __construct()
+--- a/news-magazine/inc/lib/WDWT_input.php
++++ b/news-magazine/inc/lib/WDWT_input.php
+@@ -144,7 +144,7 @@
+ 
+ 
+ 
+-function wdwt_param_clean($input, $default = false, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array())
++function wdwt_param_clean($input, $default, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array()) /* BXSCC 2026-10: "= false" removed from $default (PHP 8 deprecation; behavior unchanged) */
+ {
+ 
+   $allowed_footer_html = apply_filters( 'wp_kses_allowed_html', "", "allowed_footer_html" );
+--- a/news-magazine/inc/front/front_params_output.php
++++ b/news-magazine/inc/front/front_params_output.php
+@@ -1019,8 +1019,8 @@
+     $top_post_categories = implode(',', $this->get_param('latest_post_categories', array(), array('')));
+ 
+ //var_dump($latest_post_categories);
+-    $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish'));
+     if ($latest_posts_enable && $latest_posts_count > 0) {
++      $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish')); /* BXSCC 2026-10: moved inside the if, so the query runs only when the ticker is on */
+       ?>
+       <div id="latest_posts">
+         <b><?php echo $latest_posts_text; ?></b>
+--- a/news-magazine/inc/front/WDWT_front_functions.php
++++ b/news-magazine/inc/front/WDWT_front_functions.php
+@@ -96,6 +96,32 @@
+   }
+ 
+ 
++  /* BXSCC 2026-10: the width and height of an image of this site, read from its file on disk. The theme used to fetch
++     the image over HTTP to measure it: a request from the server to itself for each listed post, or to any other
++     site a post's first image pointed at. Images that are not on this site count as unknown (0 x 0), which the
++     theme already handles. */
++  public static function local_image_size($url)
++  {
++    $url = preg_replace('#^https?:#', '', (string) $url);
++    $up = wp_get_upload_dir();
++    foreach (array(array($up['baseurl'], $up['basedir']), array(content_url(), WP_CONTENT_DIR)) as $pair) {
++      $base = rtrim(preg_replace('#^https?:#', '', $pair[0]), '/') . '/';
++      if (strpos($url, $base) !== 0) {
++        continue;
++      }
++      $file = realpath(rtrim($pair[1], '/') . '/' . rawurldecode(strtok(substr($url, strlen($base)), '?#')));
++      $root = realpath($pair[1]);
++      if ($file && $root && strpos($file, $root . DIRECTORY_SEPARATOR) === 0) {
++        $size = @getimagesize($file);
++        if ($size) {
++          return array($size[0], $size[1]);
++        }
++      }
++      break;
++    }
++    return array(0, 0);
++  }
++
+   /**
+    *  Get first image of post for thumbnail
+    */
+@@ -151,7 +177,7 @@
+       }
+     }
+     if ($thumb_url) {
+-      list($w, $h) = @getimagesize($thumb_url);
++      list($w, $h) = self::local_image_size($thumb_url); /* BXSCC 2026-10: was @getimagesize($thumb_url), an HTTP fetch of the image */
+       if ($w == 0) {
+         $w = 10;
+       }
