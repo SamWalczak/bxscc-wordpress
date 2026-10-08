@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.62
+ * Version: 1.63
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -158,26 +158,41 @@ add_action('wp_footer', function () {
   }
   var group = [], index = 0;
 
-  // a photo not here yet: after a tenth of a second (long enough for one already downloaded to appear without a
-  // flicker), hide the previous photo and show a spinner until the new one is complete
-  var wait = 0;
-  function arrived() { clearTimeout(wait); box.classList.remove("is-loading"); }
-  img.addEventListener("load", arrived);
-  img.addEventListener("error", arrived);
-
+  // Moving to a photo: it is fetched out of sight first; once it has arrived, photo and caption change together, and
+  // after the browser has drawn it, the event "bx-lightbox-shown" tells block 3i (the banner behind follows).
+  // Browsers otherwise keep painting the previous photo until the new one is ready, under the new caption. If it takes
+  // more than a tenth of a second (long enough for a photo already downloaded to appear without a flicker), a spinner
+  // and the new caption show meanwhile.
+  var want = "", pending = null, wait = 0;
+  function swap(url, alt, caption, ok) {
+    if (url !== want) { return; }   // passed over, or the lightbox was closed
+    clearTimeout(wait);
+    pending = null;
+    img.src = url; img.alt = alt; cap.textContent = caption;
+    box.classList.remove("is-loading");
+    // two animation frames: the first is drawn with the new photo (its decoding happens in that frame), then the event
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      if (url === want) { box.dispatchEvent(new CustomEvent("bx-lightbox-shown", { detail: { url: url, ok: ok } })); }
+    }); });
+  }
   function show(i) {
     index = (i + group.length) % group.length;
     var link = group[index];
     var thumb = link.querySelector("img");
-    img.src = link.href;
-    clearTimeout(wait);
-    if (img.complete) { box.classList.remove("is-loading"); }
-    else { wait = setTimeout(function () { if (!img.complete) { box.classList.add("is-loading"); } }, 100); }
-    img.alt = thumb ? thumb.alt : "";
-    cap.textContent = link.getAttribute("data-caption") || (thumb ? (thumb.title || "") : "");   // data-caption: banner photos (block 3i)
+    var url = link.href, alt = thumb ? thumb.alt : "";
+    var caption = link.getAttribute("data-caption") || (thumb ? (thumb.title || "") : "");   // data-caption: banner photos (block 3i)
     var multi = group.length > 1;
     prevBtn.style.display = multi ? "" : "none";
     nextBtn.style.display = multi ? "" : "none";
+    if (pending && pending.src !== url && !pending.complete) { pending.onload = pending.onerror = null; pending.removeAttribute("src"); }   // passed over: stop fetching it
+    want = url;
+    box.dispatchEvent(new CustomEvent("bx-lightbox-request", { detail: { url: url } }));
+    clearTimeout(wait);
+    var pre = pending = new Image();
+    pre.onload = function () { swap(url, alt, caption, true); };
+    pre.onerror = function () { swap(url, alt, caption, false); };
+    pre.src = url;
+    if (!pre.complete) { wait = setTimeout(function () { if (want === url) { box.classList.add("is-loading"); cap.textContent = caption; } }, 100); }
   }
   function open(link) {
     group = groupOf(link);
@@ -185,8 +200,11 @@ add_action('wp_footer', function () {
     box.classList.add("is-open");
   }
   function close() {
-    box.classList.remove("is-open");
-    arrived();
+    box.classList.remove("is-open", "is-loading");
+    clearTimeout(wait);
+    want = "";
+    if (pending && !pending.complete) { pending.onload = pending.onerror = null; pending.removeAttribute("src"); }
+    pending = null;
     img.src = "";
   }
 
@@ -678,7 +696,8 @@ HTML;
        banner slide have finished loading, they download one at a time, at low priority, starting with the slide on
        screen and then its neighbors on both sides (the one the lightbox shows, while it is open). A slide clicked
        before its photo has arrived is fetched right then, and a background download of a different photo is stopped
-       until it has; meanwhile the lightbox shows a spinner instead of the previous photo.
+       until it has; meanwhile the lightbox shows a spinner instead of the previous photo. The banner behind moves to
+       a photo when the lightbox has drawn it, so both change in the same moment.
        Captions: the slide's Caption field in the Media Library (Media > Library > carousel2-cropped > Caption).
        While the lightbox shows banner photos the slideshow holds still and follows it: moving left or right in the
        lightbox moves the banner to the same photo, and on closing the banner plays on from the photo the lightbox
@@ -707,7 +726,6 @@ function bx_slide_originals_script() {
   var spans = Array.prototype.slice.call(document.querySelectorAll("#slideshow .bwg_slider > span"));
   var slides = spans.map(function (s) { return s.querySelector("img"); });
   var box = document.getElementById("bx-lightbox");
-  var shown = box ? box.querySelector("img") : null;   // the lightbox's photo
   var urls = links.map(function (a) { return a.href; });
   function onScreen() {   // the slide the theme shows now
     var c = document.getElementById("bwg_current_image_key");
@@ -730,9 +748,8 @@ function bx_slide_originals_script() {
   var have = {};          // photos the browser has (or that failed: not retried)
   var bg = null;          // the background download in progress
   var running = false;
-  function waitingForClick() {   // the lightbox is fetching a photo the visitor asked for
-    return box && box.classList.contains("is-open") && shown.getAttribute("src") && !shown.complete;
-  }
+  var asked = "";         // a photo the visitor moved to in the lightbox, not on screen yet: background downloads wait
+  function waitingForClick() { return asked !== ""; }
   function next() {
     if (!running || bg || waitingForClick()) { return; }
     // the slide on screen first, then its neighbors on both sides, nearest first, so that the photo one arrow away
@@ -752,8 +769,9 @@ function bx_slide_originals_script() {
     im.onload = im.onerror = function () { have[url] = true; bg = null; next(); };
     im.src = url;
   }
-  // the slideshow follows the lightbox: held still while the lightbox shows banner photos, moved to the photo the
-  // lightbox shows (at once, no crossfade: it is behind the lightbox), and playing again from that photo on closing
+  // the slideshow follows the lightbox: held still from the moment a banner photo is asked for, moved to each banner
+  // photo when the lightbox puts it on screen (at once, no crossfade: it is behind the lightbox), so photo and banner
+  // change together, and playing again from that photo on closing
   var slideshow = document.getElementById("slideshow");
   var slideOf = {};
   links.forEach(function (a) { slideOf[a.href] = spans.indexOf(a.closest(".bwg_slider > span")); });
@@ -763,36 +781,38 @@ function bx_slide_originals_script() {
     // the theme restarts its timer when the pointer leaves the banner or the window regains focus; not while held
     window.play = function () { if (held) { return; } return play.apply(this, arguments); };
   }
-  function follow() {
-    var open = box.classList.contains("is-open");
-    var src = open && shown.getAttribute("src") ? shown.src : "";
-    var k = slideOf.hasOwnProperty(src) ? slideOf[src] : -1;
-    if (k >= 0) {
-      if (!held) { held = true; clearInterval(window.wdwts_playInterval); slideshow.classList.add("bx-held"); }
-      if (k !== onScreen() && typeof window.wdwt_bwg_change_image === "function" && window.data && window.data[k]) {
-        window.wdwt_bwg_change_image(onScreen(), k, window.data);
-      }
-    } else if (held && !open) {
-      held = false;
-      slideshow.classList.remove("bx-held");
-      if (typeof window.play === "function") { window.play(); }   // a full interval on this photo, then on as usual
-    }
+  function hold() { if (!held) { held = true; clearInterval(window.wdwts_playInterval); slideshow.classList.add("bx-held"); } }
+  function release() {
+    if (!held) { return; }
+    held = false;
+    slideshow.classList.remove("bx-held");
+    if (typeof window.play === "function") { window.play(); }   // a full interval on this photo, then on as usual
   }
-  if (shown) {
-    new MutationObserver(function () {
-      // a photo opened in the lightbox: if it is one of these and not here yet, it goes first
-      var src = shown.getAttribute("src") ? shown.src : "";
-      if (src && urls.indexOf(src) !== -1 && !have[src] && bg && bg.url !== src) {
+  if (box) {
+    box.addEventListener("bx-lightbox-request", function (e) {
+      var url = e.detail.url;
+      asked = url;
+      if (slideOf.hasOwnProperty(url)) { hold(); }
+      // one of these, not here yet: it goes first, and a background download of another photo stops
+      if (urls.indexOf(url) !== -1 && !have[url] && bg && bg.url !== url) {
         bg.im.onload = bg.im.onerror = null;
-        bg.im.removeAttribute("src");   // stops that download; it is fetched again later
+        bg.im.removeAttribute("src");   // fetched again later
         bg = null;
       }
-      follow();
+    });
+    box.addEventListener("bx-lightbox-shown", function (e) {
+      var url = e.detail.url;
+      if (asked === url) { asked = ""; }
+      if (e.detail.ok && urls.indexOf(url) !== -1) { have[url] = true; }
+      var k = slideOf.hasOwnProperty(url) ? slideOf[url] : -1;
+      if (k >= 0 && k !== onScreen() && typeof window.wdwt_bwg_change_image === "function" && window.data && window.data[k]) {
+        window.wdwt_bwg_change_image(onScreen(), k, window.data);
+      }
       next();
-    }).observe(shown, { attributes: true, attributeFilter: ["src"] });
-    new MutationObserver(follow).observe(box, { attributes: true, attributeFilter: ["class"] });
-    shown.addEventListener("load", function () { if (urls.indexOf(shown.src) !== -1) { have[shown.src] = true; } next(); });
-    shown.addEventListener("error", function () { next(); });
+    });
+    new MutationObserver(function () {
+      if (!box.classList.contains("is-open")) { asked = ""; release(); next(); }
+    }).observe(box, { attributes: true, attributeFilter: ["class"] });
   }
   // start once the page has loaded and every banner slide is in (they load after the page's first photo; give up
   // waiting for them after 30 seconds)
