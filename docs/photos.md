@@ -45,6 +45,7 @@ Clicking a grid photo, or any other photo in page content, opens it large over a
 
 - **Which photos.** Every image inside the content area (`.entry`), except images in the sidebar, images with the class `bx-nozoom` (for images too small to enlarge), and images that link to a web page rather than an image file (logos linking to partners stay ordinary links).
 - **Full size.** For a photo with no link, the full-size file is found by removing WordPress's `-300x225` style size suffix from its address.
+- **Loading.** A photo that has not arrived yet shows a spinner in place of the previous photo (after a tenth of a second, so photos already downloaded appear without a flicker); browsers otherwise keep the previous photo on screen, under the new caption, until the new one is complete.
 - **Groups.** Photos in the same grid, or in the same table cell, form a group; the lightbox steps through the group. A lone photo is its own group and shows no arrows.
 - **Caption.** The link's `data-caption` if it has one (the banner photos: see [banner.md](banner.md)), otherwise the photo's title, or its alt text when it has no title. Line breaks in a caption are kept, so a bilingual caption shows English and Chinese on separate lines.
 - **Fixed frame.** The photo area is a fixed box (80% of the window wide, 82% tall; full width on phones). Every photo scales to fit inside it, so the frame and arrows never move between photos.

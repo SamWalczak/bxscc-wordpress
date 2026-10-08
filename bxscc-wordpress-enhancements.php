@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.61
+ * Version: 1.62
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -32,6 +32,13 @@ add_action('wp_head', function () {
 .bx-lightbox figure { margin: 0; width: 80vw; height: 82vh; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: default; }
 .bx-lightbox img { max-width: 100%; max-height: calc(100% - 40px); object-fit: contain; }
 .bx-lightbox p { color: #fff; margin: 12px 0 0; font-style: italic; text-align: center; min-height: 1.4em; }
+/* moving to a photo that has not arrived yet: the browser would keep showing the previous photo until the new one is
+   complete, under the new caption; instead the photo area shows a spinner until then */
+.bx-lightbox figure { position: relative; }
+.bx-lightbox.is-loading img { visibility: hidden; }
+.bx-lightbox.is-loading figure::before { content: ""; position: absolute; left: 50%; top: calc(50% - 20px); width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: bx-lb-spin 0.9s linear infinite; }
+@keyframes bx-lb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bx-lightbox.is-loading figure::before { animation-duration: 2.4s; } }
 /* arrows pinned to the window edges, outside the photo box, in the same place for every photo */
 .bx-lb-nav { position: fixed; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,0.15); font-size: 0; cursor: pointer; z-index: 10000; display: flex; align-items: center; justify-content: center; }
 /* chevrons drawn with borders, so they are centered geometrically rather than by a font's baseline */
@@ -151,11 +158,21 @@ add_action('wp_footer', function () {
   }
   var group = [], index = 0;
 
+  // a photo not here yet: after a tenth of a second (long enough for one already downloaded to appear without a
+  // flicker), hide the previous photo and show a spinner until the new one is complete
+  var wait = 0;
+  function arrived() { clearTimeout(wait); box.classList.remove("is-loading"); }
+  img.addEventListener("load", arrived);
+  img.addEventListener("error", arrived);
+
   function show(i) {
     index = (i + group.length) % group.length;
     var link = group[index];
     var thumb = link.querySelector("img");
     img.src = link.href;
+    clearTimeout(wait);
+    if (img.complete) { box.classList.remove("is-loading"); }
+    else { wait = setTimeout(function () { if (!img.complete) { box.classList.add("is-loading"); } }, 100); }
     img.alt = thumb ? thumb.alt : "";
     cap.textContent = link.getAttribute("data-caption") || (thumb ? (thumb.title || "") : "");   // data-caption: banner photos (block 3i)
     var multi = group.length > 1;
@@ -169,6 +186,7 @@ add_action('wp_footer', function () {
   }
   function close() {
     box.classList.remove("is-open");
+    arrived();
     img.src = "";
   }
 
@@ -658,8 +676,9 @@ HTML;
        Clicking a slide opens its photo in the same lightbox as the page photos, with the other banner photos one
        arrow away. The photos are large (3 to 13 MB), so none is fetched with the page: once the page and every
        banner slide have finished loading, they download one at a time, at low priority, starting with the slide on
-       screen. A slide clicked before its photo has arrived is fetched right then, and a background download of a
-       different photo is stopped until it has.
+       screen and then its neighbors on both sides (the one the lightbox shows, while it is open). A slide clicked
+       before its photo has arrived is fetched right then, and a background download of a different photo is stopped
+       until it has; meanwhile the lightbox shows a spinner instead of the previous photo.
        Captions: the slide's Caption field in the Media Library (Media > Library > carousel2-cropped > Caption).
        While the lightbox shows banner photos the slideshow holds still and follows it: moving left or right in the
        lightbox moves the banner to the same photo, and on closing the banner plays on from the photo the lightbox
@@ -716,10 +735,15 @@ function bx_slide_originals_script() {
   }
   function next() {
     if (!running || bg || waitingForClick()) { return; }
-    var k = onScreen(), url = null;
-    for (var d = 0; d < spans.length && !url; d++) {   // the slide on screen first, then in viewing order
-      var a = spans[(k + d) % spans.length].querySelector("a.bx-slide-original");
-      if (a && !have[a.href]) { url = a.href; }
+    // the slide on screen first, then its neighbors on both sides, nearest first, so that the photo one arrow away
+    // in the lightbox (either way) is usually here already
+    var k = onScreen(), n = spans.length, url = null;
+    for (var d = 0; d < n && !url; d++) {
+      var sides = d === 0 ? [k] : [k + d, k - d];
+      for (var t = 0; t < sides.length && !url; t++) {
+        var a = spans[((sides[t] % n) + n) % n].querySelector("a.bx-slide-original");
+        if (a && !have[a.href]) { url = a.href; }
+      }
     }
     if (!url) { return; }
     var im = new Image();
