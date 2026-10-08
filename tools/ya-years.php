@@ -1,8 +1,13 @@
 <?php
 /*
- * Youth Ambassadors Program page: replaces the hand-written year links under "Profiles of Past Programs" with
- * [bx_ya_years] (plugin 1.66 or later), which lists every program year by decade, like Archives by Year on News and
- * Events, and gives the heading id="past-programs" (the "All Program Years" link on each year's page lands there).
+ * Youth Ambassadors Program page: the bottom section becomes the same as "Archives by Year" on News and Events:
+ *   <div class="bx-section">
+ *   <h1 style="text-align: center;"><strong>Profiles of Past Programs</strong></h1>
+ *   [bx_ya_years]
+ *   </div>
+ * [bx_ya_years] (plugin 1.66 or later) lists every program year by decade. Replaced: the "Profiles of Past Programs"
+ * heading, the year links under it (the hand-written links, or the [bx_ya_years] put there by the first version of
+ * this script), and the "- - -" separator lines directly above the heading and directly below the links.
  * From public_html:
  *   wp eval-file ~/ya-years.php dry --skip-themes --skip-plugins   (shows what would change)
  *   wp eval-file ~/ya-years.php run --skip-themes --skip-plugins   (changes it)
@@ -14,35 +19,42 @@ kses_remove_filters();   // save the content exactly as written (no user is logg
 
 $plugin = WP_PLUGIN_DIR . '/bxscc-wordpress-enhancements/bxscc-wordpress-enhancements.php';
 $ver = is_file($plugin) ? get_file_data($plugin, array('v' => 'Version'))['v'] : '';
-if (!$ver || version_compare($ver, '1.66', '<')) { WP_CLI::error("The plugin here is version '$ver'; install 1.66 first, or the page would show [bx_ya_years] as text."); }
+if (!$ver || version_compare($ver, '1.66', '<')) { WP_CLI::error("The plugin here is version '$ver'; install the new version first, or the page would show [bx_ya_years] as text."); }
 
 $page = get_page_by_path('youth-ambassadors-program');
 if (!$page) { WP_CLI::error('No page at /youth-ambassadors-program/.'); }
 $c = $page->post_content;
-if (strpos($c, '[bx_ya_years]') !== false) { WP_CLI::success('Nothing to do: the page already has [bx_ya_years].'); return; }
+$section = "<div class=\"bx-section\">\n<h1 style=\"text-align: center;\"><strong>Profiles of Past Programs</strong></h1>\n[bx_ya_years]\n</div>\n";
+if (strpos($c, rtrim($section)) !== false) { WP_CLI::success('Nothing to do: the page already has the new section.'); return; }
 
-// the heading, then one paragraph per year, each holding one link to a YYYY-bxscc-youth-ambassadors-program page
-$re = '#(<h3)((?:(?!\bid=)[^>])*)(>\s*<strong>\s*Profiles of Past Programs\s*</strong>\s*</h3>)\s*'
-    . '((?:<p[^>]*>\s*<a\s[^>]*href="[^"]*/\d{4}-bxscc-youth-ambassadors-program/?"[^>]*>\s*(?:<strong>)?\s*\d{4}\s*(?:</strong>)?\s*</a>\s*</p>\s*)+)#i';
+$sep = '(?:-|&#8211;|–)\s*(?:-|&#8211;|–)\s*(?:-|&#8211;|–)';      // "- - -", as typed or as WordPress shows it
+$link = '<p[^>]*>\s*<a\s[^>]*href="[^"]*/\d{4}-bxscc-youth-ambassadors-program/?"[^>]*>\s*(?:<strong>)?\s*\d{4}\s*(?:</strong>)?\s*</a>\s*</p>\s*';
+$re = '~(?:<h3[^>]*>\s*' . $sep . '\s*</h3>\s*)?'                                  // separator above (optional)
+    . '<h3[^>]*>\s*<strong>\s*Profiles of Past Programs\s*</strong>\s*</h3>\s*'    // the heading
+    . '((?:' . $link . ')+|\[bx_ya_years\]\s*)'                                    // hand-written links, or the shortcode
+    . '(?:<p[^>]*>\s*' . $sep . '\s*</p>\s*)?~iu';                                 // separator below (optional)
 if (preg_match_all($re, $c, $all, PREG_SET_ORDER) !== 1) { WP_CLI::error('Could not find exactly one "Profiles of Past Programs" heading followed by year links; the page has changed, so nothing was done.'); }
 $m = $all[0];
-preg_match_all('#/(\d{4})-bxscc-youth-ambassadors-program/?"#', $m[4], $ym);
-$listed = array_map('intval', $ym[1]);
 
 // the years the shortcode will list: published pages with that address
 $pages = array();
 foreach (get_posts(array('post_type' => 'page', 'post_status' => 'publish', 'numberposts' => -1)) as $p) {
     if (preg_match('/^(\d{4})-bxscc-youth-ambassadors-program$/', $p->post_name, $pm)) { $pages[] = (int) $pm[1]; }
 }
-sort($pages); $sorted = $listed; sort($sorted);
-WP_CLI::log('Years linked by hand now:       ' . implode(', ', $listed));
-WP_CLI::log('Years the list will show:       ' . implode(', ', $pages));
-if ($sorted !== $pages) { WP_CLI::error('Those differ, so the new list would add or drop a year; nothing was done.'); }
+sort($pages);
+WP_CLI::log('Years the list will show:  ' . implode(', ', $pages));
+if (strpos($m[1], '[bx_ya_years]') === false) {
+    preg_match_all('#/(\d{4})-bxscc-youth-ambassadors-program/?"#', $m[1], $ym);
+    $listed = array_map('intval', $ym[1]);
+    WP_CLI::log('Years linked by hand now:  ' . implode(', ', $listed));
+    sort($listed);
+    if ($listed !== $pages) { WP_CLI::error('Those differ, so the new list would add or drop a year; nothing was done.'); }
+}
 
 $old = $m[0];
-$new = $m[1] . ' id="past-programs"' . $m[2] . $m[3] . "\n[bx_ya_years]\n";
-$updated = str_replace($old, $new, $c);
-WP_CLI::log("\n--- now ---\n" . trim($old) . "\n\n--- after ---\n" . trim($new) . "\n");
+$atEnd = substr($c, -strlen($old)) === $old;   // the section ends the page: no newline after it
+$updated = str_replace($old, $atEnd ? rtrim($section) : $section, $c);
+WP_CLI::log("\n--- now ---\n" . trim($old) . "\n\n--- after ---\n" . trim($section) . "\n");
 if ($mode !== 'run') { WP_CLI::success('Dry run: nothing changed. Run again with "run" to make the change.'); return; }
 
 $r = wp_update_post(wp_slash(array('ID' => $page->ID, 'post_content' => $updated)), true);

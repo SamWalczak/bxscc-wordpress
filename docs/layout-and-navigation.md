@@ -27,13 +27,22 @@ Two sets of pages have one page per year, and both work the same way: a list of 
 | | News and Events | Youth Ambassadors Program |
 |---|---|---|
 | A year's page | a post whose title reads "News and Events" or "News and Media" followed by a four-digit year (the list uses the slug `news-and-media-YYYY`) | a published page with the slug `YYYY-bxscc-youth-ambassadors-program` (any parent; today they are under News and Events) |
-| The list | `[bx_years]` under "Archives by Year" on News and Events | `[bx_ya_years]` under "Profiles of Past Programs" on the program page |
+| The list | `[bx_years]` under the heading "Archives by Year" on News and Events | `[bx_ya_years]` under the heading "Profiles of Past Programs" at the bottom of the program page |
 | The bar's sides | the year just before and just after | the nearest program year before and after (2019 links to 2024: there were no programs from 2020 to 2023) |
-| The middle link | All News and Events, to News and Events | All Program Years, to the list on the program page (`/youth-ambassadors-program/#past-programs`; the heading carries `id="past-programs"`) |
+| The middle link | All News and Events, to News and Events | Program Overview, to the program page |
 
 **A new program year** needs only its page: publish it with the slug `YYYY-bxscc-youth-ambassadors-program` and it appears in the list and in its neighbors' bars. Publishing, unpublishing, trashing or renaming such a page empties every cached page (block 9; Nginx Helper alone would empty only the page that was saved).
 
-The program page's list replaced four hand-written links with version 1.66 (`tools/ya-years.php`, run once on the live site; it checks that the list will show exactly the years that were linked).
+Both lists are written the same way in the page content, a section with a centered heading and the shortcode:
+
+```
+<div class="bx-section">
+<h1 style="text-align: center;"><strong>Profiles of Past Programs</strong></h1>
+[bx_ya_years]
+</div>
+```
+
+On the program page the section follows a paragraph; `p + .bx-section` in `components.css` puts it 24px below, the same distance Archives by Year has from the section above it. The program page's section replaced a heading, four hand-written links and the "- - -" lines around them with version 1.67 (`tools/ya-years.php`, run once on the live site; it checks that the list will show exactly the years that were linked).
 
 ## Menu bar on one row
 

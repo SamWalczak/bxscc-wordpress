@@ -159,4 +159,5 @@ html[data-theme="dark"] .bx-year-nav, html[data-theme="dark"] .bx-subnav { borde
 .bx-section { display: flow-root; }   /* each table keeps its 8px bottom margin inside its section, as on the old hand-made pages */
 .bx-section + .bx-section { margin-top: 24px; }   /* the old 24px spacer between sections: 8 + 24 = 32px from a table to the next heading */
 .bx-section:not(:has(~ .bx-section table)) > table:last-child { margin-bottom: 0; }   /* the page's last table ends flush, like #content .entry > table:last-of-type */
+p + .bx-section { margin-top: 24px; }   /* a section after ordinary text (Profiles of Past Programs) sits as far below it as Archives by Year does below the section before it */
 .bx-ev-empty { margin: 0; text-align: center; font-style: italic; }

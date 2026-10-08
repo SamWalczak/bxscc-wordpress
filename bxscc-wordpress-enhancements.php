@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.66
+ * Version: 1.67
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -921,9 +921,9 @@ add_filter('document_title_parts', function ($parts) {
       - Youth Ambassadors Program: one page per program year, slug YYYY-bxscc-youth-ambassadors-program (BX_YA_SLUG);
         the list of years is [bx_ya_years], placed on the program page under its "Profiles of Past Programs" heading.
       Each list shows one row per decade, newest decade first (bx_year_decades). Each yearly page ends with a bar:
-      previous year, all years, next year (bx_year_bar; .bx-year-nav in components.css). The News and Events bar
-      links the years either side; the Youth Ambassadors bar links the nearest program years either side, since
-      there were no programs from 2020 to 2023. */
+      previous year, the overview, next year (bx_year_bar; .bx-year-nav in components.css). The News and Events bar
+      links the years either side and All News and Events; the Youth Ambassadors bar links the nearest program
+      years either side, since there were no programs from 2020 to 2023, and Program Overview (the program page). */
 define('BX_YA_SLUG', '/^(\d{4})-bxscc-youth-ambassadors-program$/');
 
 /* $byYear: year => address. One <p> per decade: the decade's label, then its years oldest first. */
@@ -994,8 +994,8 @@ add_filter('the_content', function ($content) {
         elseif ($y > $year && !$next) { $next = array($y, $url); }
     }
     $hub = get_page_by_path('youth-ambassadors-program');
-    $all = ($hub ? get_permalink($hub) : home_url('/youth-ambassadors-program/')) . '#past-programs';
-    return $content . bx_year_bar('Youth Ambassadors Program by year', $prev, $all, 'All Program Years', $next);
+    $all = $hub ? get_permalink($hub) : home_url('/youth-ambassadors-program/');
+    return $content . bx_year_bar('Youth Ambassadors Program by year', $prev, $all, 'Program Overview', $next);
 }, 20);
 
 /* A program year published, unpublished or renamed changes the list on the program page and the bars on its
