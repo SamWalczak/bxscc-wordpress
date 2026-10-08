@@ -183,6 +183,15 @@ p + .bx-section { margin-top: 24px; }   /* a section after ordinary text (Profil
 .bx-reflection figcaption a { margin-top: 4px; font-size: 0.9em; font-weight: 600; }
 .bx-reflection blockquote.bx-quote { flex: 1; min-width: 0; }
 .bx-reflection:nth-child(even) blockquote.bx-quote { padding: 0 18px 0 0; border-left: 0; border-right: 3px solid var(--bx-navy); }
+/* without a photo (2019 page): the title and years of study above the quote, every quote's rule on the left
+   (on phones, above every quote, from the rule below) */
+.bx-reflection-who { margin: 0 0 10px; line-height: 1.5; }
+.bx-reflection-who > * { display: block; }
+.bx-reflection-who em { font-size: 0.9em; color: var(--bx-muted); }
+.bx-reflection:not(:has(> figure)) { display: block; }
+@media (min-width: 600px) {
+  .bx-reflection:nth-child(even):not(:has(> figure)) blockquote.bx-quote { padding: 0 0 0 18px; border-right: 0; border-left: 3px solid var(--bx-navy); }
+}
 html[data-theme="dark"] .bx-reflections { border-top-color: var(--bx-gold); }
 html[data-theme="dark"] :is(.entry, .entry-content) blockquote.bx-quote { border-color: var(--bx-gold); }
 @media (max-width: 599px) {

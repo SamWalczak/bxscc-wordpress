@@ -63,6 +63,17 @@ Reflections: a section heading with no table under it, like the not-found page (
 
 Keep the figure and its caption on one line: in a page without the Custom HTML wrapper, WordPress turns line breaks inside a caption into `<br>`. The photo column is 220px wide (a third of the column on narrower screens); a photo narrower than that is centered in it at its own width.
 
+Without photos (2019 page, plugin 1.71): the title and years of study go in `<div class="bx-reflection-who">` in place of the figure, on one line for the same reason. They sit above the quote, and every quote keeps its rule on the left (above it on phones) instead of swapping sides.
+
+```html
+<div class="bx-reflection">
+<div class="bx-reflection-who"><strong>2019 Youth Ambassador Elijah A.</strong><em>9 Years of Chinese Studies</em></div>
+<blockquote class="bx-quote">
+<p>"…"</p>
+</blockquote>
+</div>
+```
+
 ## Button bars
 
 | Class | Used on | Effect |
