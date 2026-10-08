@@ -39,6 +39,8 @@ Every uploaded photo in page content without a `srcset` now gets one:
 
 Photos from other sites, and photos that are not in the Media Library, are left as they are.
 
+**A page that opens with a photo.** When a page's content starts with a photo (nothing written before it), the photo is marked `bx-lead` and its top edge sits on the sidebar's top line, as a page that opens with a table already did (see [page-markup.md](page-markup.md#two-column-tables)). Until 1.70 such a photo sat 4 to 6 pixels lower: the theme's margin above images, or the text line an inline photo sits on. A photo that was inline also loses the empty space under it that the text line left, so what follows it moves up by that much too (13 pixels on the Youth Ambassadors program page and the 2024 and 2025 pages).
+
 **No jump while loading.** A photo written without `width` and `height` has no size until it arrives, so the text under it jumped down when it did (the first photo on History; the logos on Partners and the 2013 trade mission pages). Such a photo gets its proportions in advance as `aspect-ratio: auto W / H` (from the file name's `-WxH`, or else the Media Library), which reserves its space; `auto` means its own proportions take over once it has loaded, so finished pages are exactly as before. Width and height attributes are not added instead: they would change which photos WordPress loads lazily.
 
 ## New uploads are WebP

@@ -292,6 +292,9 @@ html[data-theme="dark"] #sidebar1 .widget-area > h3 { border-top-color: var(--bx
    (measured on About Us: table 288px, sidebar 294px from the top of the window). Side-by-side layout only. */
 @media (min-width: 768px) {
   #content .entry > table:first-child { margin-top: 6px; }
+  /* the same for a page that opens with a photo (marked bx-lead by the plugin): its top edge on the sidebar's top line */
+  #content .entry > :first-child:has(img.bx-lead) { margin-top: 0; padding-top: 0; }
+  #content .entry img.bx-lead { display: block; margin-top: 6px; }
 }
 
 /* ---------- carousel placeholder: a slide whose photo has not arrived yet is a navy box with a small gold spinner

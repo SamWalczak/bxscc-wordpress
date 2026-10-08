@@ -25,8 +25,10 @@ The site's basic layout: a white table with a navy top rule (gold in dark mode),
 - A label's first line is aligned with the first line of the text beside it (baseline alignment), unless the row opens with a photo or video, which stays top-aligned.
 - A cell spanning both columns (`colspan="2"`) is a full-width content cell, used for row titles and for single-cell rows such as the Contact page.
 - On phones (under 600px) the label sits centered above its text.
-- A page that opens with a table drops it 6px so its top line meets the sidebar's.
+- A page that opens with a table drops it 6px so its top line meets the sidebar's. A page that opens with a photo (nothing written before it) gets the same: the plugin marks that photo `bx-lead` and `theme-fixes.css` sets its top edge on the sidebar's top line (side-by-side layout only).
 - The last table on a page has no bottom margin.
+
+A media table (2018 Youth Ambassadors page) is this same table: one row title per news source, then a row per article with its date as the label (linked to the article too) and the link and a short summary as the text. A Chinese-language row carries `lang="zh-Hans"` on its cells.
 
 Event lists generate exactly this markup; see [events.md](events.md).
 
@@ -37,6 +39,29 @@ Event lists generate exactly this markup; see [events.md](events.md).
 | `table.bx-roster` with `<col class="bx-c-role">`, `bx-c-name`, `bx-c-email` | Leadership | Fixed column widths (32 / 22 / 46%) shared by every table on the page, so the officer and subcommittee tables line up. |
 | `table.bx-speakers`, header row `tr.bx-thead` | CHINA Town Hall | Narrow year column, labeled header row, two equal text columns. On phones the header row is hidden and the third column is prefixed "Baltimore local speaker:". |
 | Three-column tables (no class) | | The middle column is flexible and the third does not wrap (it wraps on phones). |
+
+## Quotes and reflections
+
+A quote: `<blockquote class="bx-quote">` with its paragraphs inside. It gets a navy rule beside the words (gold in dark mode; above them on phones) and the text's own color, instead of the theme's small gray italic. Used for Danny Evans's note in the Thanks table on the 2018 Youth Ambassadors page and for each reflection.
+
+Reflections: a section heading with no table under it, like the not-found page (a navy line under the heading), then one block per ambassador. The photo, with the ambassador's title and name, years of study (italic) and an optional video link under it, sits beside the quote; photo and quote swap sides from one ambassador to the next, with the sidebar's thin Hot Links divider between ambassadors. On phones each stacks: photo, caption, quote.
+
+```html
+<div class="bx-section">
+<h1 style="text-align: center;"><strong>Reflections from 2018 Youth Ambassadors</strong></h1>
+<div class="bx-reflections">
+<div class="bx-reflection">
+<figure><img src="…" alt="" width="143" height="307" /><figcaption><strong>2018 Youth Ambassador Aaron G.</strong><em>3 years of Chinese studies</em><a href="…">Aaron's video testimonial</a></figcaption></figure>
+<blockquote class="bx-quote">
+<p>"…"</p>
+</blockquote>
+</div>
+<div class="bx-reflection">…</div>
+</div>
+</div>
+```
+
+Keep the figure and its caption on one line: in a page without the Custom HTML wrapper, WordPress turns line breaks inside a caption into `<br>`. The photo column is 220px wide (a third of the column on narrower screens); a photo narrower than that is centered in it at its own width.
 
 ## Button bars
 

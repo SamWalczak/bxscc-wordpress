@@ -161,3 +161,33 @@ html[data-theme="dark"] .bx-year-nav, html[data-theme="dark"] .bx-subnav { borde
 .bx-section:not(:has(~ .bx-section table)) > table:last-child { margin-bottom: 0; }   /* the page's last table ends flush, like #content .entry > table:last-of-type */
 p + .bx-section { margin-top: 24px; }   /* a section after ordinary text (Profiles of Past Programs) sits as far below it as Archives by Year does below the section before it */
 .bx-ev-empty { margin: 0; text-align: center; font-style: italic; }
+
+/* ---------- quotes (Youth Ambassadors pages): a navy rule beside the words (gold in dark mode), in the text's own color
+   instead of the theme's small gray italic ---------- */
+:is(.entry, .entry-content) blockquote.bx-quote { margin: 0; padding: 0 0 0 18px; border-left: 3px solid var(--bx-navy); color: var(--bx-text); font-size: inherit; font-style: normal; }
+:is(.entry, .entry-content) blockquote.bx-quote p { margin: 0 0 10px; line-height: 1.6; }
+:is(.entry, .entry-content) blockquote.bx-quote p:last-child { margin-bottom: 0; }
+
+/* ---------- reflections (Youth Ambassadors year pages): a section without a table, like the not-found page (the navy line
+   under the heading); each ambassador's photo with name, years of study and video link under it, the quote beside it,
+   photo and quote swapping sides from one ambassador to the next; the sidebar's Hot Links divider between them ---------- */
+.bx-reflections { border-top: 2px solid var(--bx-navy); }
+.bx-reflection { display: flex; align-items: flex-start; gap: 24px; padding: 20px 0; }
+.bx-reflection + .bx-reflection { border-top: 1px solid var(--bx-line); }
+.bx-reflection:nth-child(even) { flex-direction: row-reverse; }
+.bx-reflection figure { flex: 0 0 min(220px, 34%); min-width: 0; margin: 0; text-align: center; }
+.bx-reflection figure img { display: block; margin: 0 auto; }
+.bx-reflection figcaption { margin-top: 10px; line-height: 1.5; }
+.bx-reflection figcaption > * { display: block; }
+.bx-reflection figcaption em { font-size: 0.9em; color: var(--bx-muted); }
+.bx-reflection figcaption a { margin-top: 4px; font-size: 0.9em; font-weight: 600; }
+.bx-reflection blockquote.bx-quote { flex: 1; min-width: 0; }
+.bx-reflection:nth-child(even) blockquote.bx-quote { padding: 0 18px 0 0; border-left: 0; border-right: 3px solid var(--bx-navy); }
+html[data-theme="dark"] .bx-reflections { border-top-color: var(--bx-gold); }
+html[data-theme="dark"] :is(.entry, .entry-content) blockquote.bx-quote { border-color: var(--bx-gold); }
+@media (max-width: 599px) {
+  .bx-reflection, .bx-reflection:nth-child(even) { flex-direction: column; align-items: stretch; gap: 14px; }
+  .bx-reflection figure { flex: none; }
+  /* phones: the rule goes above the words (single-cell table rows are centered on phones, so a rule beside them would sit apart) */
+  :is(.entry, .entry-content) blockquote.bx-quote, .bx-reflection:nth-child(even) blockquote.bx-quote { padding: 12px 0 0; border: 0; border-top: 3px solid var(--bx-navy); }
+}

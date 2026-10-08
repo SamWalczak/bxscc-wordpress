@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.69
+ * Version: 1.70
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -1285,6 +1285,17 @@ add_filter('wp_content_img_tag', function ($img) {
     }
     return preg_replace('/^<img /', '<img style="' . $ar . '" ', $img);
 }, 30);
+/* A page that opens with a photo (nothing written before it): the photo is marked bx-lead, and theme-fixes.css sets
+   its top edge on the sidebar's top line, as a page that opens with a table already was. Without the mark the photo
+   sat 4 to 6 pixels lower (the theme's margin above images, or the text line an inline photo sits on). Only the main
+   content of a single page or post is looked at. */
+add_filter('the_content', function ($c) {   // after WordPress's image pass (12), so the tag is final apart from this class
+    if (!is_singular() || !in_the_loop() || !is_main_query()) { return $c; }
+    if (!preg_match('#^\s*(?:<(?:p|h[1-6]|div|figure)\b[^>]*>\s*)?(?:<a\b[^>]*>\s*)?(<img\b[^>]*>)#i', $c, $m, PREG_OFFSET_CAPTURE)) { return $c; }
+    $tag = $m[1][0];
+    $new = preg_match('/\sclass="/i', $tag) ? preg_replace('/\sclass="/i', ' class="bx-lead ', $tag, 1) : preg_replace('/^<img\b/i', '<img class="bx-lead"', $tag);
+    return substr_replace($c, $new, $m[1][1], strlen($tag));
+}, 13);
 
 /* 16. The News Magazine theme (Web-Dorado, version 1.1.12) was closed on WordPress.org in 2019 and will get no more
        updates. Its parts that anyone could reach but no page of this site uses are switched off here, from outside the
