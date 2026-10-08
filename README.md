@@ -1,6 +1,19 @@
-# BXSCC WordPress Enhancements
+# BXSCC WordPress
 
-The WordPress plugin behind [bxscc.org](https://bxscc.org), the website of the Baltimore-Xiamen Sister City Committee. It holds everything the site does beyond stock WordPress and its theme (News Magazine 1.1.12), so the site can be maintained from one place and handed from one volunteer to the next.
+The WordPress code behind [bxscc.org](https://bxscc.org), the website of the Baltimore-Xiamen Sister City Committee: the site's own plugin, **BXSCC WordPress Enhancements**, and its theme, **News Magazine 1.1.12** with the committee's fixes. The rest of the site is WordPress itself, plugins installed from WordPress.org, and what is stored in the database (pages, events, menus, widgets, theme settings), none of which is here.
+
+| Folder | What it is | On the server |
+|---|---|---|
+| `wp-content/plugins/bxscc-wordpress-enhancements/` | The plugin: everything the site does beyond stock WordPress and the theme | the same path |
+| `wp-content/themes/news-magazine/` | News Magazine 1.1.12 by Web-Dorado, with the local fixes | the same path |
+| `docs/` | How each feature works, and how to maintain the site | not needed |
+| `tools/` | One-time scripts that changed the site's content (the events migration, page layouts) | not needed |
+
+Both `wp-content` folders keep their names on the server: the plugin's documentation and scripts use its folder name, and WordPress records the active theme by its folder name.
+
+## Features
+
+### Plugin: BXSCC WordPress Enhancements 1.75
 
 It has no settings screen of its own (besides the reports under Events, Appearance > Site CSS and Tools > Link check). Install it, and these features are on:
 
@@ -17,48 +30,104 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Layout and navigation** | Sidebar and content end level, parent-page links in the phone menu, year lists by decade and a previous / all / next bar on yearly pages (News and Events, Youth Ambassadors Program), home page tab title, a not-found page in the site's layout. | [docs/layout-and-navigation.md](docs/layout-and-navigation.md) |
 | **Page markup** | The table, grid and button-bar patterns page content uses, and the CSS classes that style them. | [docs/page-markup.md](docs/page-markup.md) |
 | **Fonts** | Self-hosted Open Sans (no Google Fonts requests), with fallback metrics so text does not jump. | [docs/fonts.md](docs/fonts.md) |
-| **News Magazine theme** | The theme has had no updates since 2019. Its unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off, and its layout widths are kept valid; four small theme-file edits are in `tools/news-magazine/`. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
+| **News Magazine theme** | The theme's unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off from the plugin, and its layout widths are kept valid. The theme's own file edits are listed below. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
 | **Performance and security** | Scripts, styles and the icon font a page does not need are left out of it, emoji scripts off, key images and fonts preloaded; XML-RPC off, security headers, the link checker kept out of the server's own network, and how the plugin's own forms, queries and page rewrite are protected. The October 2026 audit is summarized there. | [docs/performance-and-security.md](docs/performance-and-security.md) |
 
-Maintenance (installing, updating, page caching, troubleshooting, changing themes): [docs/maintenance.md](docs/maintenance.md).
+### Theme: News Magazine 1.1.12 with local fixes
+
+WordPress.org closed the theme in 2019 and no update will come, so it is kept here in full: it can no longer be installed from the dashboard. The repository's history starts from the theme as released, so `git log -p -- wp-content/themes/news-magazine` shows every change below.
+
+| Change | Files | When |
+|---|---|---|
+| Runs on PHP 8 without errors or deprecation warnings: the slider and banner widget, an undeclared property, a parameter order | `inc/front/front_params_output.php`, `inc/widgets/widget-advert.php`, `inc/admin/page_slider.php`, `inc/lib/WDWT_input.php` | Aug 2024, Oct 2026 |
+| Post-list thumbnails measured from the image file on disk, not fetched over HTTP (no requests from the server to itself or to other sites) | `inc/front/WDWT_front_functions.php` | Oct 2026 |
+| The header news ticker queries the database only when it is switched on (three fewer queries per page) | `inc/front/front_params_output.php` | Oct 2026 |
+| The logo keeps its real size | `style.css` | Aug 2024 |
+| The block editor shows pages in the site's styles | `functions.php`, `editor-style.css` | Oct 2026 |
+
+The edits from the October 7 and 8, 2026 review are marked `BXSCC 2026-10` in the files. Reasons and details: [docs/news-magazine-theme.md](docs/news-magazine-theme.md).
 
 ## Requirements
 
-- WordPress (in production on 7.1.3).
-- The **News Magazine** theme by Web-Dorado, version 1.1.12. The banner, header and `css/theme-fixes.css` features patch that theme's markup and do nothing useful on another theme. Events, Site CSS, photos, video previews, fonts, page markup styles and the performance settings work on any theme. See [Changing themes](docs/maintenance.md#changing-themes).
+- WordPress (in production on 7.1.3) and PHP 8 (in production on 8.3).
+- The plugin's banner, header and `css/theme-fixes.css` features patch News Magazine's markup and do nothing useful on another theme. Events, Site CSS, photos, video previews, fonts, page markup styles and the performance settings work on any theme. See [Changing themes](docs/maintenance.md#changing-themes).
 - No other plugins are required. If **Nginx Helper** is installed with purging on, saving Site CSS or changing an event or section empties every page's cached copy through it, page by page (block 18).
 
-## Installing
+## Installation
 
-The plugin folder must be named `bxscc-wordpress-enhancements` (the events migration scripts and the documentation use that path).
+### On a new site
 
-1. Copy this repository's contents into `wp-content/plugins/bxscc-wordpress-enhancements/` (cPanel File Manager, SFTP, or a clone). The `tools/` folder is not needed on the server, and GitHub's **Download ZIP** leaves it out.
-2. Activate **BXSCC WordPress Enhancements** under **Plugins**.
-3. That is all: the events table is created automatically the first time WordPress runs with the plugin.
+1. Get the files: on GitHub, **Code > Download ZIP** (it leaves out `tools/`), or a clone.
+2. Copy `wp-content/plugins/bxscc-wordpress-enhancements/` and `wp-content/themes/news-magazine/` into the site's `wp-content` folder, at the same paths (cPanel File Manager, SFTP, or the terminal).
+3. In the dashboard: **Appearance > Themes**, activate **News Magazine**; **Plugins**, activate **BXSCC WordPress Enhancements**. The events table is created the first time WordPress runs with the plugin.
 
-## Files
+Pages, events, menus, widgets and the theme's settings (Appearance > Customize) are in the database: moving the site means moving its database too (a backup plugin such as UpdraftPlus does both).
+
+### Updating bxscc.org from this repository
+
+In the cPanel terminal, after uploading the ZIP from GitHub to the home folder (GitHub names it after the repository and branch, for example `bxscc-wordpress-main.zip`; use its real name below):
+
+1. Unpack it in the home folder:
+   ```
+   cd ~ && unzip -q bxscc-wordpress-main.zip
+   ```
+2. Check for Site CSS edits made in the dashboard. Appearance > Site CSS saves into the plugin's `css/` files on the server, so copying the repository's files over them would replace those edits:
+   ```
+   md5sum ~/public_html/wp-content/plugins/bxscc-wordpress-enhancements/css/*.css ~/bxscc-wordpress-main/wp-content/plugins/bxscc-wordpress-enhancements/css/*.css
+   ```
+   If a pair differs and the repository has no change to that file, someone saved Site CSS since the last update: copy that change into the repository first. (Appearance > Site CSS > History keeps every saved version, so an overwritten edit can still be restored.)
+3. Back up the two folders as they are now:
+   ```
+   tar -czf ~/bx-before-update-$(date +%F).tgz -C ~/public_html/wp-content plugins/bxscc-wordpress-enhancements themes/news-magazine
+   ```
+4. Copy the new files over the old ones. This adds and replaces files only: the server's `css/history/` stays, and a file removed from the repository has to be deleted by hand.
+   ```
+   cp -R ~/bxscc-wordpress-main/wp-content/. ~/public_html/wp-content/
+   ```
+5. Check that no file can be changed by other accounts on the server (`-perm /022` finds files writable by the group or by others). It should print nothing; run `chmod go-w` on anything it lists.
+   ```
+   find ~/public_html/wp-content/plugins/bxscc-wordpress-enhancements ~/public_html/wp-content/themes/news-magazine -perm /022
+   ```
+6. Wait 95 seconds, then empty the page cache. The server's PHP looks for changed files only every 90 seconds, and pages cached in that window would keep the old code's output.
+   ```
+   sleep 95; cd ~/public_html && wp eval 'echo bx_purge_all_pages(), " pages emptied\n";' --skip-themes --skip-plugins=wordfence,updraftplus,shortcodes-ultimate
+   ```
+7. If theme files changed, Wordfence reports them as modified: check that they are the intended changes and mark each "Ignore until file changes". Do not let it "Repair" them, which puts back the original theme files.
+8. Delete the unpacked copy and the ZIP:
+   ```
+   rm -r ~/bxscc-wordpress-main ~/bxscc-wordpress-main.zip
+   ```
+
+More on updating, the page cache and troubleshooting: [docs/maintenance.md](docs/maintenance.md).
+
+## Reference
+
+### Files
 
 ```
-bxscc-wordpress-enhancements.php  the plugin: every feature except Site CSS editing and Events, in numbered blocks
-css-editor.php                    Appearance > Site CSS (dashboard only)
-css/components.css                styling for the site's own markup; theme-independent
-css/theme-fixes.css               patches for the News Magazine theme
-css/history/                      created by Site CSS: every saved version (not in this repository)
-events/events.php                 events storage, date wording, sections, shortcodes, yearly pages
-events/admin.php                  the Events dashboard menu
-links/links.php                   the weekly dead-link check, warnings, the archive swap, replacing addresses, Save Page Now, Tools > Link check, and wp bx-links
-fonts/                            Open Sans woff2 files and their license (SIL OFL 1.1)
-docs/                             feature documentation
-tools/migration/                  one-time scripts used to move the old hand-written event pages into the events table
-tools/ya-years.php                one-time script that put the year list on the Youth Ambassadors Program page
-tools/photo-loading.php           one-time script that fixed the loading order of four photos (October 2026 audit)
-tools/ya-2018.php ... ya-2025.php   one-time scripts that put the new layout on the 2018, 2019, 2024 and 2025 Youth Ambassadors pages
-                                  (run 2019 to 2025 with --use-include; see the note at the top of each)
-tools/ya-program.php              one-time script that put the new layout on the Youth Ambassadors Program page (--use-include)
-tools/news-magazine/              the patch applied to the News Magazine theme's own files (not part of the plugin)
+wp-content/plugins/bxscc-wordpress-enhancements/
+  bxscc-wordpress-enhancements.php   the plugin: every feature except Site CSS editing and Events, in numbered blocks
+  css-editor.php                     Appearance > Site CSS (dashboard only)
+  css/components.css                 styling for the site's own markup; theme-independent
+  css/theme-fixes.css                patches for the News Magazine theme
+  css/history/                       created on the server by Site CSS: every saved version (not in this repository)
+  events/events.php                  events storage, date wording, sections, shortcodes, yearly pages
+  events/admin.php                   the Events dashboard menu
+  links/links.php                    the weekly dead-link check, warnings, the archive swap, replacing addresses,
+                                     Save Page Now, Tools > Link check, and wp bx-links
+  templates/404.php                  the not-found page, in the site's layout
+  fonts/                             Open Sans woff2 files and their license (SIL OFL 1.1)
+wp-content/themes/news-magazine/     News Magazine 1.1.12 with the local fixes
+docs/                                feature documentation (file paths in it are relative to the plugin folder)
+tools/migration/                     one-time scripts that moved the old hand-written event pages into the events table
+tools/ya-years.php                   one-time script that put the year list on the Youth Ambassadors Program page
+tools/photo-loading.php              one-time script that fixed the loading order of four photos (October 2026 audit)
+tools/ya-2018.php ... ya-2025.php    one-time scripts that put the new layout on the 2018, 2019, 2024 and 2025
+                                     Youth Ambassadors pages (run 2019 to 2025 with --use-include; see the note in each)
+tools/ya-program.php                 one-time script that put the new layout on the Youth Ambassadors Program page
 ```
 
-## Data the plugin stores
+### Data the plugin stores
 
 | Where | What |
 |---|---|
@@ -80,5 +149,6 @@ Deactivating the plugin deletes nothing. Event lists then show as plain shortcod
 
 ## License
 
-Plugin code: GPL version 2 or later (see [LICENSE](LICENSE)), the license WordPress itself uses, which plugins built on WordPress's APIs inherit.
-Open Sans: SIL Open Font License 1.1 (see [fonts/OFL.txt](fonts/OFL.txt)).
+- The plugin, `docs/` and `tools/`: GPL version 2 or later ([LICENSE](LICENSE)), the license WordPress itself uses, which plugins built on its APIs inherit.
+- The theme: News Magazine, copyright 2017 web-dorado.com, GPL version 3 or later ([LICENSE-THEME](LICENSE-THEME); the theme's own notes are in its `license.txt` and `readme.txt`).
+- Open Sans: SIL Open Font License 1.1 ([fonts/OFL.txt](wp-content/plugins/bxscc-wordpress-enhancements/fonts/OFL.txt)).

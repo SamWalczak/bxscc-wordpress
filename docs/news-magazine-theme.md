@@ -5,7 +5,9 @@ The site runs **News Magazine 1.1.12** by Web-Dorado. WordPress.org closed the t
 What it found and what was done, in two places:
 
 - **Block 16 of `bxscc-wordpress-enhancements.php`** switches off, from outside the theme, the parts that anyone could reach but no page of the site uses. Nothing in the theme's files changes for these.
-- **Four small edits to theme files** for what cannot be fixed from outside. The patch is in [`tools/news-magazine/`](../tools/news-magazine/).
+- **Four small edits to theme files** for what cannot be fixed from outside, in the theme's own files in [`wp-content/themes/news-magazine/`](../wp-content/themes/news-magazine/).
+
+The whole theme is in this repository: WordPress.org closed it in 2019, so it can no longer be installed from the dashboard, and this copy is the way to get it back. Its history starts from the theme as released (rebuilt from the server's copy by reversing the recorded local edits, see below), so `git log -p -- wp-content/themes/news-magazine` shows every change made to it.
 
 Every page was compared before and after: the HTML of all 43 pages checked is byte-for-byte the same, and the theme's stylesheet and scripts are untouched, so the site looks and behaves exactly as before.
 
@@ -23,7 +25,7 @@ Also in block 16: the layout widths the theme does arithmetic with (main column,
 
 Not switched off, because they are admin-only: the theme's custom CSS box, footer text and slider texts print what an administrator typed without filtering. Administrators can already add any code to the site, so this is not a hole.
 
-## Theme file edits (`tools/news-magazine/`)
+## Theme file edits (October 2026)
 
 Each edit is marked in the file with a `BXSCC 2026-10` comment.
 
@@ -35,6 +37,19 @@ Each edit is marked in the file with a `BXSCC 2026-10` comment.
 | `inc/front/WDWT_front_functions.php` | Post-list thumbnails are measured from the image file on disk. | The theme fetched each image over HTTP just to read its size: a request from the server to itself per listed post, or to any other site a post's first image pointed at. Not triggered on the site today (no listed post has an image yet), so this prevents a slowdown and a server-side request forgery risk rather than fixing a current one. Images not on the site count as "size unknown", which the theme already handled. Since 1.69 (October 8, 2026), an address containing `%00` also counts as size unknown: decoded, it made `realpath()` throw a fatal error on PHP 8, which would have taken down every archive page listing such a post. |
 
 Wordfence reports changed theme files; mark these four "Ignore until file changes", like the earlier local edits.
+
+## Earlier local edits
+
+Made on the server before this review, and already in the theme here. In October 2026 Wordfence compared the server's theme with WordPress.org's original and found these four files changed, plus the added `editor-style.css`; all are intended.
+
+| File | Change | Date | Why |
+|---|---|---|---|
+| `style.css` | `#logo img { width: 100%; }` commented out | Aug 20, 2024 | Keeps the logo at its real size. |
+| `inc/front/front_params_output.php` | `$imgs_number = (array) $imgs_number;` added | Aug 20, 2024 | PHP 8 compatibility for the theme's slider. |
+| `inc/widgets/widget-advert.php` | `$bannerPath = (array) $bannerPath;` added | Aug 20, 2024 | PHP 8 compatibility for the banner widget. |
+| `functions.php`, `editor-style.css` | `add_theme_support( 'editor-styles' );` before `add_editor_style();`, and `editor-style.css` (a copy of `style.css`) added | Oct 2, 2026 | The block editor shows pages in the site's styles. |
+
+Do not let Wordfence "Repair" these files: it would put back the original files and undo the PHP 8 fixes.
 
 ## Faster pages
 

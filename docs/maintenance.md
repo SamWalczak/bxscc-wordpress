@@ -2,6 +2,8 @@
 
 ## Updating the plugin
 
+In this repository the plugin is `wp-content/plugins/bxscc-wordpress-enhancements/` and the theme `wp-content/themes/news-magazine/`; the steps for updating the site from the repository as a whole are in the [README](../README.md#updating-bxsccorg-from-this-repository). For a single file:
+
 PHP can only be changed by uploading files (the dashboard editors are off; see [site-css.md](site-css.md#php-cannot-be-edited-from-the-dashboard)). Upload in cPanel File Manager or over SFTP, overwriting the file.
 
 - **Order matters when a new file is required.** `bxscc-wordpress-enhancements.php` loads `events/events.php`, `links/links.php` and, in the dashboard, `css-editor.php`. Upload new or renamed required files first and the main file last; a main file that requires a missing file stops every page with a fatal error.
