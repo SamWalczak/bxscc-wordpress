@@ -10,11 +10,15 @@
  * - Key 2019 Program Staff: a section heading with a table, one row per person (tense brought to the past).
  * - Thanks and Appreciation (was Appreciation): a section heading with the text in a table; the donation line removed.
  * Needs plugin 1.73 or later (the styles for reflections without photos, and italics in section-table text).
- * Works on the page as it was, or on the first version of this layout (Oct 8, 14:00, with a date column).
+ * Works on the page as it was, on the first version of this layout (Oct 8, 14:00, with a date column), or on the
+ * version installed on Oct 8 (15:25). Oct 8, 16:00: Cindy Wang's lasting background back in the present, as written
+ * ("is a past recipient", "has served"); her role and job then stay in the past.
  * From public_html:
- *   wp eval-file ~/ya-2019.php dry --skip-themes --skip-plugins   (checks the page; changes nothing)
- *   wp eval-file ~/ya-2019.php run --skip-themes --skip-plugins   (changes it)
+ *   wp eval-file ~/ya-2019.php dry --use-include --skip-themes --skip-plugins   (checks the page; changes nothing)
+ *   wp eval-file ~/ya-2019.php run --use-include --skip-themes --skip-plugins   (changes it)
  * WordPress keeps the previous version as a revision (page editor > Revisions).
+ * --use-include: without it WP-CLI first scans the file with a pattern that runs out of PCRE stack on a page this
+ * long (the 2025 page) and then silently runs nothing; include mode skips that scan. No output at all means it did not run.
  */
 if (!defined('ABSPATH')) { exit; }
 $mode = isset($args[0]) ? $args[0] : 'dry';
@@ -121,7 +125,7 @@ $new = str_replace('https://bxscc.org', $site, <<<'HTML'
 <td colspan="2"><p><strong>Arella Liu</strong> was the BXSCC’s Treasurer from 2014 until her passing in 2020. The 2018 and 2019 Youth Ambassadors programs' concept was born of her interactions with visiting delegations from China during her time with the BXSCC and her own experience years earlier as an international student from China. A native of Beijing, Arella was an avid traveler in her time away from a very successful career as a financial analyst with a major insurance / financial services firm.</p></td>
 </tr>
 <tr>
-<td colspan="2"><p><strong>Xin (Cindy) Wang</strong> was the BXSCC’s Chair and responsible for overseeing the organizations’ overall structural support for the Program. Cindy was a past recipient of the Gates Millennium Scholarship for high-achieving ethnic minority students with significant financial need, studied abroad through the Council on International Educational Exchange (CIEE) during college, and had served as a volunteer English-language lecturer in rural Jiangxi Province, China. At the time, she worked for a U.S. manufacturing company with responsibilities related to their export business.</p></td>
+<td colspan="2"><p><strong>Xin (Cindy) Wang</strong> was the BXSCC’s Chair and responsible for overseeing the organizations’ overall structural support for the Program. Cindy is a past recipient of the Gates Millennium Scholarship for high-achieving ethnic minority students with significant financial need, studied abroad through the Council on International Educational Exchange (CIEE) during college, and has served as a volunteer English-language lecturer in rural Jiangxi Province, China. At the time, she worked for a U.S. manufacturing company with responsibilities related to their export business.</p></td>
 </tr>
 </tbody>
 </table>
@@ -141,7 +145,7 @@ HTML
 $c = $page->post_content;
 if ($c === $new) { WP_CLI::success('Nothing to do: the page already has the new layout.'); return; }
 $was = md5(str_replace($site, 'https://bxscc.org', $c));
-$known = array('889866b8aeb9fd44ed93ec878d38d190' => 'the original', '21f7291a121c85e0159da9988e2add89' => 'the first version of the new layout');
+$known = array('889866b8aeb9fd44ed93ec878d38d190' => 'the original', '21f7291a121c85e0159da9988e2add89' => 'the first version of the new layout', '4524de33e2c4cbbb2c649efdbd8f9ed3' => 'the version installed on Oct 8');
 if (!isset($known[$was])) {
     WP_CLI::error("The page is not the version this was written against (fingerprint $was), so nothing was done. Paste this output; the page's content is needed to redo the change.");
 }

@@ -42,7 +42,7 @@ Event lists generate exactly this markup; see [events.md](events.md).
 
 ## Quotes and reflections
 
-A quote: `<blockquote class="bx-quote">` with its paragraphs inside. It gets a navy rule beside the words (gold in dark mode; above them on phones) and the text's own color, instead of the theme's small gray italic. Used for Danny Evans's note in the Thanks table on the 2018 Youth Ambassadors page and for each reflection.
+A quote: `<blockquote class="bx-quote">` with its paragraphs inside. It gets a navy rule beside the words (gold in dark mode; above them on phones) and the text's own color, instead of the theme's small gray italic. Used for each reflection and for Danny Evans's note in the Thanks table on the 2018 Youth Ambassadors page. Inside a table (that note) it is set in 24px with a thin gray rule like the sidebar's dividers instead of the navy one, also in dark mode; on phones the thin line sits above it (since 1.74).
 
 Reflections: a section heading with no table under it, like the not-found page (a navy line under the heading), then one block per ambassador. The photo, with the ambassador's title and name, years of study (italic) and an optional video link under it, sits beside the quote; photo and quote swap sides from one ambassador to the next, with the sidebar's thin Hot Links divider between ambassadors. From 600px wide the quote's rule runs at least the photo's height and a shorter quote is centered on the photo; a longer quote keeps its own length, with the photo at its top (since 1.72: block 3j measures the photo and sets `--bx-photo-h`, because CSS alone cannot keep the caption under the photo while sizing the quote by it). On phones each stacks: photo, caption, quote.
 

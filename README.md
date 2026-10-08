@@ -52,7 +52,8 @@ docs/                             feature documentation
 tools/migration/                  one-time scripts used to move the old hand-written event pages into the events table
 tools/ya-years.php                one-time script that put the year list on the Youth Ambassadors Program page
 tools/photo-loading.php           one-time script that fixed the loading order of four photos (October 2026 audit)
-tools/ya-2018.php, ya-2019.php    one-time scripts that put the new layout on the 2018 and 2019 Youth Ambassadors pages
+tools/ya-2018.php ... ya-2025.php   one-time scripts that put the new layout on the 2018, 2019, 2024 and 2025 Youth Ambassadors pages
+                                  (run 2019 to 2025 with --use-include; see the note at the top of each)
 tools/news-magazine/              the patch applied to the News Magazine theme's own files (not part of the plugin)
 ```
 

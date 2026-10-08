@@ -297,6 +297,11 @@ html[data-theme="dark"] #sidebar1 .widget-area > h3 { border-top-color: var(--bx
   #content .entry img.bx-lead { display: block; margin-top: 6px; }
 }
 
+/* The theme gives a linked "alignnone" photo a 20px right margin (a img.alignnone). The lightbox links every content
+   photo, so a full-width one stuck out 10px past a phone screen and the page scrolled sideways (the Youth Ambassadors
+   pages' group photos). Nothing sits beside such a photo, so the margin did nothing else. */
+#content .entry a.bx-zoom > img.alignnone { margin-right: 0; }
+
 /* ---------- carousel placeholder: a slide whose photo has not arrived yet is a navy box with a small gold spinner
    (the plugin marks it .bx-loading and removes the mark when the photo loads). The box is the slide itself, so
    nothing changes size when the photo appears, and the arrows work the whole time. ---------- */
