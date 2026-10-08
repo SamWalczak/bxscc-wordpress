@@ -58,7 +58,7 @@ $new = str_replace('https://bxscc.org', $site, <<<'HTML'
 </tr>
 <tr>
 <td colspan="2">
-<h3 style="text-align: center;"><strong>xmenglish.cn</strong></h3>
+<h3 style="text-align: center;"><strong>Xiamen Network (English edition)</strong></h3>
 </td>
 </tr>
 <tr>
