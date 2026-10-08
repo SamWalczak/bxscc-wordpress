@@ -54,6 +54,7 @@ tools/ya-years.php                one-time script that put the year list on the 
 tools/photo-loading.php           one-time script that fixed the loading order of four photos (October 2026 audit)
 tools/ya-2018.php ... ya-2025.php   one-time scripts that put the new layout on the 2018, 2019, 2024 and 2025 Youth Ambassadors pages
                                   (run 2019 to 2025 with --use-include; see the note at the top of each)
+tools/ya-program.php              one-time script that put the new layout on the Youth Ambassadors Program page (--use-include)
 tools/news-magazine/              the patch applied to the News Magazine theme's own files (not part of the plugin)
 ```
 
