@@ -2,14 +2,16 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.63
+ * Version: 1.64
  */
 if (!defined('ABSPATH')) { exit; }
 
-/* 1. Apply a saved dark-mode preference before first paint (no light flash). */
+/* 1. Apply a saved dark-mode preference before first paint (no light flash). Also marks the page html.bx-js, so styles
+      that need the scripts (photos fading in, block 15) only apply when scripts run, and defines bxIn(), which shows such
+      a photo: with a fade if the page had already been drawn without it, at once if not (a photo already downloaded). */
 add_action('wp_head', function () {
 ?>
-<script>(function(){try{if(localStorage.getItem("bx-theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");}}catch(e){}})();</script>
+<script>(function(){document.documentElement.classList.add("bx-js");window.bxIn=function(im){var p=performance.getEntriesByType?performance.getEntriesByType("paint"):[];if(!p.length){im.style.transition="none";}im.classList.add("bx-in");};try{if(localStorage.getItem("bx-theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");}}catch(e){}})();</script>
 <?php
 }, 1);
 
@@ -39,6 +41,11 @@ add_action('wp_head', function () {
 .bx-lightbox.is-loading figure::before { content: ""; position: absolute; left: 50%; top: calc(50% - 20px); width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: bx-lb-spin 0.9s linear infinite; }
 @keyframes bx-lb-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bx-lightbox.is-loading figure::before { animation-duration: 2.4s; } }
+/* photos in page content appear whole, with a short fade, instead of being drawn from the top down as they download
+   (block 15 marks them; without scripts they show as usual) */
+html.bx-js img.bx-fade:not(.bx-in) { opacity: 0; }
+img.bx-fade { transition: opacity 0.25s ease-out; }
+@media (prefers-reduced-motion: reduce) { img.bx-fade { transition: none; } }
 /* arrows pinned to the window edges, outside the photo box, in the same place for every photo */
 .bx-lb-nav { position: fixed; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,0.15); font-size: 0; cursor: pointer; z-index: 10000; display: flex; align-items: center; justify-content: center; }
 /* chevrons drawn with borders, so they are centered geometrically rather than by a font's baseline */
@@ -694,7 +701,8 @@ HTML;
        Clicking a slide opens its photo in the same lightbox as the page photos, with the other banner photos one
        arrow away. The photos are large (3 to 13 MB), so none is fetched with the page: once the page and every
        banner slide have finished loading, they download one at a time, at low priority, starting with the slide on
-       screen and then its neighbors on both sides (the one the lightbox shows, while it is open). A slide clicked
+       screen and then its neighbors on both sides (the one the lightbox shows, while it is open), and only while no
+       photo of the page itself is downloading (one further down starts as the visitor scrolls). A slide clicked
        before its photo has arrived is fetched right then, and a background download of a different photo is stopped
        until it has; meanwhile the lightbox shows a spinner instead of the previous photo. The banner behind moves to
        a photo when the lightbox has drawn it, so both change in the same moment.
@@ -750,8 +758,31 @@ function bx_slide_originals_script() {
   var running = false;
   var asked = "";         // a photo the visitor moved to in the lightbox, not on screen yet: background downloads wait
   function waitingForClick() { return asked !== ""; }
+  // the page's own photos come first: one that is downloading right now (a photo further down starts when the visitor
+  // scrolls toward it) makes background downloads wait, and stops one under way; it is fetched again later
+  var lbImg = box ? box.querySelector("img") : null;
+  function pageBusy() {
+    var h = window.innerHeight;
+    for (var i = 0; i < document.images.length; i++) {
+      var im = document.images[i];
+      if (im === lbImg || im.complete) { continue; }
+      var src = im.currentSrc || im.getAttribute("src") || "";
+      if (!src || src.indexOf("data:") === 0) { continue; }   // a banner slide not asked for yet
+      if (im.currentSrc || im.getAttribute("loading") !== "lazy") { return true; }   // arriving, or on its way
+      // a lazy photo: browsers fetch it once it is within about 1250px of the screen (no page tells when it started)
+      var r = im.getBoundingClientRect();
+      if ((r.width || r.height) && r.bottom > -1250 && r.top < h + 1250) { return true; }
+    }
+    return false;
+  }
+  var watch = setInterval(function () {
+    if (!running) { return; }
+    if (pageBusy()) {
+      if (bg) { bg.im.onload = bg.im.onerror = null; bg.im.removeAttribute("src"); bg = null; }
+    } else if (!bg) { next(); }
+  }, 400);
   function next() {
-    if (!running || bg || waitingForClick()) { return; }
+    if (!running || bg || waitingForClick() || pageBusy()) { return; }
     // the slide on screen first, then its neighbors on both sides, nearest first, so that the photo one arrow away
     // in the lightbox (either way) is usually here already
     var k = onScreen(), n = spans.length, url = null;
@@ -762,7 +793,7 @@ function bx_slide_originals_script() {
         if (a && !have[a.href]) { url = a.href; }
       }
     }
-    if (!url) { return; }
+    if (!url) { clearInterval(watch); return; }   // all here: nothing left to watch for
     var im = new Image();
     im.fetchPriority = "low";
     bg = { url: url, im: im };
@@ -1047,6 +1078,14 @@ add_filter('wp_content_img_tag', function ($img, $context, $id) {
     }
     return preg_replace('/^<img /', '<img srcset="' . esc_attr($set) . '" sizes="' . esc_attr($sizes) . '" ', $img);
 }, 10, 3);
+/* Every photo in page content, events and widgets: browsers draw a photo from the top down as it downloads, which
+   looked unfinished; marked here, it stays transparent until it has arrived whole, then fades in (styles in block 2).
+   The handlers are on the tag itself, so they are in place however early the photo arrives. */
+add_filter('wp_content_img_tag', function ($img) {
+    if (strpos($img, ' onload=') !== false || strpos($img, 'bx-fade') !== false) { return $img; }
+    $img = preg_match('/\sclass="/', $img) ? preg_replace('/\sclass="/', ' class="bx-fade ', $img, 1) : preg_replace('/^<img /', '<img class="bx-fade" ', $img);
+    return preg_replace('/^<img /', '<img onload="window.bxIn?bxIn(this):this.classList.add(\'bx-in\')" onerror="this.classList.add(\'bx-in\')" ', $img);
+}, 20);
 
 /* 16. The News Magazine theme (Web-Dorado, version 1.1.12) was closed on WordPress.org in 2019 and will get no more
        updates. Its parts that anyone could reach but no page of this site uses are switched off here, from outside the

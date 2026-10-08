@@ -45,7 +45,7 @@ The banner shows wide cropped copies. A slide whose uncropped photo is on the se
 
 **When they download.** They are large (3 to 13 MB, about 36 MB for the six), so none comes with the page:
 
-1. Nothing is fetched until the page's load event has fired and every banner slide has arrived (or 30 seconds after the load event, if a slide never does).
+1. Nothing is fetched until the page's load event has fired and every banner slide has arrived (or 30 seconds after the load event, if a slide never does), and never while one of the page's own photos is downloading: a photo further down starts when the visitor scrolls toward it, and then a background download under way stops (it is fetched again once the page's photos are in).
 2. Then they download one at a time, at low priority, starting with the slide on screen and then its neighbors on both sides, nearest first (while the lightbox is open, the slide it shows), so the photo one arrow away in either direction is usually already there.
 3. A slide clicked (or reached with the lightbox's arrows) before its photo has arrived is fetched right then, and the lightbox shows a spinner instead of the previous photo until it is complete (after a tenth of a second, so a photo already downloaded appears without a flicker). A background download of a different photo is stopped, and the queue waits until the clicked photo has arrived; the stopped one is fetched again later. Arrows in the lightbox count as clicks.
 4. The server lets browsers keep these files for 7 days, so a later visit takes them from the browser's cache.

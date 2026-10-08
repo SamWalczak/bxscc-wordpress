@@ -39,6 +39,10 @@ Every uploaded photo in page content without a `srcset` now gets one:
 
 Photos from other sites, and photos that are not in the Media Library, are left as they are.
 
+## Photos appear whole
+
+Browsers draw a photo from the top down as its bytes arrive, which looked unfinished. Every photo in page content, events and sidebar widgets (block 15 marks them `bx-fade`) stays transparent until it has arrived whole, then appears: with a quarter-second fade if the page had already been drawn without it, at once if it was ready before the page's first paint (a photo already in the browser's cache). Its space is reserved from the start, so nothing moves. Without scripts, photos show as they always did (the rule applies only under `html.bx-js`, set by the first script in `<head>`). Visitors who ask for less motion get no fade.
+
 ## Lightbox
 
 Clicking a grid photo, or any other photo in page content, opens it large over a dark backdrop:
