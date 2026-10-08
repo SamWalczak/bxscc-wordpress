@@ -23,7 +23,7 @@ The site's basic layout: a white table with a navy top rule (gold in dark mode),
 
 - The label column is 150px wide, smaller and gray; `<em>` inside it is shown upright (italic inside that `<em>` shows as italic).
 - A label's first line is aligned with the first line of the text beside it (baseline alignment), unless the row opens with a photo or video, which stays top-aligned.
-- A cell spanning both columns (`colspan="2"`) is a full-width content cell, used for row titles and for single-cell rows such as the Contact page.
+- A cell spanning both columns (`colspan="2"`) is a full-width content cell, used for row titles and for single-cell rows such as the Contact page. It is the row's first cell, so the label rule above shows its `<em>` upright too; inside a `.bx-section` table, `<em>` in its paragraphs stays italic (since 1.73; the 2019 Youth Ambassadors dates line). Row titles stay upright.
 - On phones (under 600px) the label sits centered above its text.
 - A page that opens with a table drops it 6px so its top line meets the sidebar's. A page that opens with a photo (nothing written before it) gets the same: the plugin marks that photo `bx-lead` and `theme-fixes.css` sets its top edge on the sidebar's top line (side-by-side layout only).
 - The last table on a page has no bottom margin.

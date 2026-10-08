@@ -2,13 +2,15 @@
 /*
  * 2019 Youth Ambassadors page (/news-and-events/2019-bxscc-youth-ambassadors-program/): new layout, October 2026,
  * the same treatment as the 2018 page.
- * - Trip Overview: a section heading like the home page's, the dates and text in a table under it.
+ * - Trip Overview: a section heading like the home page's, the dates and text in a table under it (one cell, the
+ *   dates in italics as the first line, as before).
  * - In the Media: the China Daily article dated (date linked too) and summarized; link title unchanged.
  * - Reflections from 2019 Youth Ambassadors: no photos; each ambassador's title and years of study above the quote,
  *   a divider between ambassadors.
  * - Key 2019 Program Staff: a section heading with a table, one row per person (tense brought to the past).
  * - Thanks and Appreciation (was Appreciation): a section heading with the text in a table; the donation line removed.
- * Needs plugin 1.71 or later (the styles for reflections without photos).
+ * Needs plugin 1.73 or later (the styles for reflections without photos, and italics in section-table text).
+ * Works on the page as it was, or on the first version of this layout (Oct 8, 14:00, with a date column).
  * From public_html:
  *   wp eval-file ~/ya-2019.php dry --skip-themes --skip-plugins   (checks the page; changes nothing)
  *   wp eval-file ~/ya-2019.php run --skip-themes --skip-plugins   (changes it)
@@ -20,7 +22,7 @@ kses_remove_filters();   // save the content exactly as written (no user is logg
 
 $plugin = WP_PLUGIN_DIR . '/bxscc-wordpress-enhancements/bxscc-wordpress-enhancements.php';
 $ver = is_file($plugin) ? get_file_data($plugin, array('v' => 'Version'))['v'] : '';
-if (!$ver || version_compare($ver, '1.71', '<')) { WP_CLI::error("The plugin here is version '$ver'; install 1.71 first, or the new sections would show without their styles."); }
+if (!$ver || version_compare($ver, '1.73', '<')) { WP_CLI::error("The plugin here is version '$ver'; install 1.73 first, or the new sections would show without their styles."); }
 
 $page = get_page_by_path('news-and-events/2019-bxscc-youth-ambassadors-program');
 if (!$page) { WP_CLI::error('No page at /news-and-events/2019-bxscc-youth-ambassadors-program/.'); }
@@ -32,8 +34,8 @@ $new = str_replace('https://bxscc.org', $site, <<<'HTML'
 <table>
 <tbody>
 <tr>
-<td><em>June 24th to July 4th, 2019 and various</em></td>
-<td>
+<td colspan="2">
+<p><em>June 24th to July 4th, 2019 and various</em></p>
 <p>BXSCC Vice Chair Danny Evans led this visit of 16 Baltimore and Maryland high school-aged students and 2 other chaperones to Xiamen and Beijing. The BXSCC obtained funds via cash grants, donations, and fundraising activities to help offset trip costs. Organizational &amp; business in-kind sponsors included Chick-Fil-A, Starbucks, Shake Shack, Blaze Pizza, Papa John’s, and Xiamen Shuangshi Middle / High School.</p>
 <p>Summer trip activities included: In Xiamen, students took classes in airplane modeling, tai chi, calligraphy, folk music &amp; music appreciation, Minnan-style Mid-Autumn Festival culture, literature, martial arts, polymer clay, and more at Xiamen Shuangshi Middle / High School. Participants visited Xiamen Airlines, the Xiamen International Convention and Exhibition Center / BRICS Xiamen Summit venue, Xiamen University, Nanputuo Temple, Gulangyu Island, and engaged with the Xiamen Office of Foreign Affairs. In Beijing, the students visited Peking University, Tian’anmen Square, the Palace Museum, the Beijing American Center (U.S. Embassy in Beijing), the Juyongguan section of the Great Wall, and Beijing Olympic Park.</p>
 <p>Associated events included: Two kick-off briefings (on December 7th, 2018 and January 18th, 2019), three participant and parents meetings (on March 29th, May 3rd, &amp; June 14th), a visit to the State Department and USAID in Washington, D.C. (on June 21st), a Small Business Administration presentation (on July 24th), a debriefing with Mayor Bernard C. “Jack” Young (on July 29th), and a U.S. Senate Foreign Relations Panel discussion in Washington, D.C. (on August 29th). At an August 2nd closing reception &amp; awards ceremony, three Youth Ambassadors were presented with certificates and gift cards for their excellent participation in the Youth Ambassadors program.</p>
@@ -139,10 +141,11 @@ HTML
 $c = $page->post_content;
 if ($c === $new) { WP_CLI::success('Nothing to do: the page already has the new layout.'); return; }
 $was = md5(str_replace($site, 'https://bxscc.org', $c));
-if ($was !== '889866b8aeb9fd44ed93ec878d38d190') {
+$known = array('889866b8aeb9fd44ed93ec878d38d190' => 'the original', '21f7291a121c85e0159da9988e2add89' => 'the first version of the new layout');
+if (!isset($known[$was])) {
     WP_CLI::error("The page is not the version this was written against (fingerprint $was), so nothing was done. Paste this output; the page's content is needed to redo the change.");
 }
-WP_CLI::log("Page {$page->ID}: found the expected version (" . strlen($c) . ' characters); the new one has ' . strlen($new) . '.');
+WP_CLI::log("Page {$page->ID}: found {$known[$was]} (" . strlen($c) . ' characters); the new one has ' . strlen($new) . '.');
 if ($mode !== 'run') { WP_CLI::success('Dry run: nothing changed. Run again with "run" to make the change.'); return; }
 
 $r = wp_update_post(wp_slash(array('ID' => $page->ID, 'post_content' => $new)), true);

@@ -70,6 +70,7 @@ html[data-theme="dark"] .bx-theme-toggle button:hover { background: #8fc1ff; col
 :is(.entry, .entry-content) td[colspan] { width: auto; font-size: inherit; color: var(--bx-text); padding: 14px 18px; }
 :is(.entry, .entry-content) td[colspan]:has(> h3) { padding-bottom: 0; }
 :is(.entry, .entry-content) td[colspan] p:first-child { margin-top: 0; }
+:is(.entry, .entry-content) .bx-section td[colspan] p em { font-style: italic; }   /* a section table's single cell is ordinary text, so its italics stay italic (the date-column rule makes em upright) */
 
 /* ---------- speaker table (CHINA Town Hall): narrow year column, labeled header row, two text columns of equal weight ---------- */
 :is(.entry, .entry-content) table.bx-speakers td:first-child { width: 70px; }
