@@ -39,6 +39,22 @@ Every uploaded photo in page content without a `srcset` now gets one:
 
 Photos from other sites, and photos that are not in the Media Library, are left as they are.
 
+**No jump while loading.** A photo written without `width` and `height` has no size until it arrives, so the text under it jumped down when it did (the first photo on History; the logos on Partners and the 2013 trade mission pages). Such a photo gets its proportions in advance as `aspect-ratio: auto W / H` (from the file name's `-WxH`, or else the Media Library), which reserves its space; `auto` means its own proportions take over once it has loaded, so finished pages are exactly as before. Width and height attributes are not added instead: they would change which photos WordPress loads lazily.
+
+## New uploads are WebP
+
+Code: block 21 of `bxscc-wordpress-enhancements.php`.
+
+A JPEG photo uploaded to the Media Library (or an iPhone HEIC photo, which WordPress otherwise turns into a JPEG) is stored and shown as WebP, about a third smaller at the same look; every current browser shows WebP. WordPress (6.7 and later) does the work through `image_editor_output_format`:
+
+- **Every copy** it makes (thumbnail, medium, large, 1536 and 2048 pixels) is WebP, so pages and their `srcset` use WebP throughout.
+- **The photo itself** as pages and the lightbox show it ("full size") is re-saved as WebP at WordPress's usual quality, after being scaled to 2560 pixels if larger (as before). Measured on a test upload: a 1600-pixel JPEG of 615 KB became a 253 KB WebP; a 3000-pixel one of 1.7 MB a 442 KB WebP at 2560 pixels.
+- **The upload itself is kept**, untouched, as the "original image" (Media Library, the photo's details: Original image), so a full-quality file is always there to download.
+- **Block editor uploads** (WordPress 7.1 over HTTPS lets the browser resize photos): the browser makes the WebP copies itself, told to by the same setting, and the uploaded file stays the original; the server does not convert it first.
+- **Only new uploads.** Editing a photo already in the library (Edit Image: crop, rotate, scale) saves in its own format as before, and `wp media regenerate` does not convert old photos.
+- **PNG files stay PNG**: they are usually logos, screenshots or graphics with sharp edges or transparency, which lossy WebP would soften.
+- If the server's image library cannot write WebP, uploads work exactly as before.
+
 ## Photos appear whole
 
 Browsers draw a photo from the top down as its bytes arrive, which looked unfinished. Every photo in page content, events and sidebar widgets (block 15 marks them `bx-fade`) is kept out of sight until it has arrived whole, then appears at once. If it is still downloading after 0.3 seconds, its space shows the banner's loading look: a navy box with a small gold spinner, the same size as the photo. A photo already in the browser's cache, or one that arrives within 0.3 seconds, never shows the box. Its space is reserved from the start, so nothing moves, and once loaded the page looks exactly as before. Without scripts, photos show as they always did (the rule applies only under `html.bx-js`, set by the first script in `<head>`). The spinner turns slowly for visitors who ask their system for reduced motion.
@@ -50,7 +66,7 @@ How it works: the photo's pixels are moved out of its box (`object-position`) wh
 Clicking a grid photo, or any other photo in page content, opens it large over a dark backdrop:
 
 - **Which photos.** Every image inside the content area (`.entry`), except images in the sidebar, images with the class `bx-nozoom` (for images too small to enlarge), and images that link to a web page rather than an image file (logos linking to partners stay ordinary links).
-- **Full size.** For a photo with no link, the full-size file is found by removing WordPress's `-300x225` style size suffix from its address.
+- **Full size.** For a photo with no link, the full-size file is found by removing WordPress's `-300x225` style size suffix from its address. Where that guess, from the photo's address or any of its smaller copies, names a file that does not exist (a photo over 2560 pixels uploaded as WebP, whose full size is `photo-scaled.webp`), the photo carries its real full-size address in `data-bx-full` (block 15); pages from before 1.69 are unchanged.
 - **Loading.** Moving to another photo, the lightbox fetches it out of sight and changes photo and caption together once it has arrived (browsers otherwise keep painting the previous photo, under the new caption, until the new one is ready). If that takes more than a tenth of a second, a spinner and the new caption show meanwhile; photos already downloaded appear without it.
 - **Groups.** Photos in the same grid, or in the same table cell, form a group; the lightbox steps through the group. A lone photo is its own group and shows no arrows.
 - **Caption.** The link's `data-caption` if it has one (the banner photos: see [banner.md](banner.md)), otherwise the photo's title, or its alt text when it has no title. Line breaks in a caption are kept, so a bilingual caption shows English and Chinese on separate lines.

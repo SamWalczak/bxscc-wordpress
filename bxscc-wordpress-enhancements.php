@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.68
+ * Version: 1.69
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -134,7 +134,7 @@ add_action('wp_footer', function () {
     var isImageLink = a && /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(a.getAttribute("href") || "");
     if (a && !isImageLink) { return; }                     // linked to a web page (logos, etc.): leave alone
     if (!a) {
-      var full = (im.currentSrc || im.src).replace(/-\d+x\d+(\.(jpe?g|png|gif|webp))$/i, "$1");
+      var full = im.getAttribute("data-bx-full") || (im.currentSrc || im.src).replace(/-\d+x\d+(\.(jpe?g|png|gif|webp))$/i, "$1");
       a = document.createElement("a");
       a.href = full;
       im.parentNode.insertBefore(a, im);
@@ -460,7 +460,7 @@ add_action('template_redirect', function () {
 
         // Carousel: start on a random slide, then go in order from it. The page itself is cached by Nginx, so the
         // choice is made in the visitor's browser: every slide's real address goes into data-src (the browser
-        // fetches nothing yet), a script at the top of <head> picks the slide and preloads it at high priority,
+        // fetches nothing yet), a script early in <head> picks the slide and preloads it at high priority,
         // and a script at the end of the header shows that slide in place of slide 1 before anything is painted.
         // Only the theme's slideshow is touched: it sits in the header, before any page content.
         $hend  = strpos($html, '</header>');
@@ -507,7 +507,14 @@ add_action('template_redirect', function () {
                 $js = JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP;   // no value can close the script tag
                 $pick = '<script>(function(){var s=' . wp_json_encode(array_values($urls), $js) . ',ss=' . wp_json_encode(array_values($sets), $js) . ';var k=Math.floor(Math.random()*s.length);window.bxSlideStart=k;'
                       . 'var l=document.createElement("link");l.rel="preload";l.as="image";if(ss[k]){if(!("imageSrcset" in l)){return;}l.imageSrcset=ss[k];l.imageSizes=' . wp_json_encode(BX_BANNER_SIZES, $js) . ';}l.href=s[k];l.setAttribute("fetchpriority","high");document.head.appendChild(l);})();</script>' . "\n";
-                $html = preg_replace_callback('#<head(\s[^>]*)?>#i', function ($h) use ($pick) { return $h[0] . "\n" . $pick; }, $html, 1);
+                // placed right after the page's viewport tags: until a phone has read them it takes the page to be 980px
+                // wide, and the preload would pick a copy for that width (on a 3x phone the 2560px file, and then the
+                // slide itself a second, smaller one). Still in <head>, before anything is drawn.
+                $he = stripos($html, '</head>');
+                $vp = $he !== false ? strripos(substr($html, 0, $he), '<meta name="viewport"') : false;
+                $ve = $vp !== false ? strpos($html, '>', $vp) : false;
+                if ($ve !== false) { $html = substr_replace($html, "\n" . $pick, $ve + 1, 0); }
+                else { $html = preg_replace_callback('#<head(\s[^>]*)?>#i', function ($h) use ($pick) { return $h[0] . "\n" . $pick; }, $html, 1); }
                 $show = '<script>(function(){var sp=document.querySelectorAll("#slideshow .bwg_slider > span"),n=sp.length,k=window.bxSlideStart||0;if(!n){return;}if(k>=n){k=0;}'
                       // every slide whose photo has not arrived shows a placeholder box (navy, with a small spinner) until it does
                       . 'Array.prototype.forEach.call(sp,function(s){var im=s.querySelector("img");if(!im){return;}function done(){if(im.naturalWidth>1||!im.getAttribute("data-src")&&im.complete){s.classList.remove("bx-loading");}}'
@@ -862,8 +869,29 @@ function bx_slide_originals_script() {
 HTML;
 }
 
-/* 4. XML-RPC is unused on this site; turning it off removes a login brute-force surface. */
+/* 4. XML-RPC is unused on this site; turning it off removes a login brute-force surface. That setting only covers
+      the methods that need a login, so the pingback methods are removed too (pings are closed on every post, so
+      they could only ever answer "no"), and the head no longer advertises the remote-publishing address (RSD) that
+      nothing can sign in to. (system.multicall stays: WordPress's XML-RPC server adds it back itself; with logins
+      off it has nothing to bundle.) */
 add_filter('xmlrpc_enabled', '__return_false');
+add_filter('xmlrpc_methods', function ($methods) {
+    unset($methods['pingback.ping'], $methods['pingback.extensions.getPingbacks']);
+    return $methods;
+});
+remove_action('wp_head', 'rsd_link');
+
+/* 4b. Security headers on the site's pages (Nginx stores them with each cached page and sends them with it):
+       - X-Content-Type-Options: browsers take every response as the type the server says, never guess another;
+       - X-Frame-Options and CSP frame-ancestors: other sites cannot show these pages inside a frame of theirs
+         (clickjacking: a framed page under a disguised layer, so a click lands on something else). The site's
+         own frames are unaffected (the Customizer preview), and so are WordPress embeds (/embed/ addresses, made to
+         be shown on other sites), which get neither header. Constant values, so cached pages stay identical. */
+add_filter('wp_headers', function ($headers, $wp) {
+    $headers += array('X-Content-Type-Options' => 'nosniff');   // += : a value something else already set stays
+    if (empty($wp->query_vars['embed'])) { $headers += array('X-Frame-Options' => 'SAMEORIGIN', 'Content-Security-Policy' => "frame-ancestors 'self'"); }
+    return $headers;
+}, 10, 2);
 
 /* 5. The emoji polyfill script and styles are unnecessary in current browsers. */
 add_action('init', function () {
@@ -957,7 +985,7 @@ add_filter('the_content', function ($content) {
     if (!preg_match('/News\s*(and|&|&amp;)\s*(Media|Events)\D*(\d{4})/i', html_entity_decode($title), $m)) { return $content; }
     $year = (int) $m[3];
     $byYear = array();
-    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false)) as $p) {
+    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false, 'update_post_term_cache' => false)) as $p) {
         if (preg_match('/News\s*(and|&|&amp;)\s*(Media|Events)\D*(\d{4})/i', html_entity_decode(get_the_title($p)), $pm)) {
             $byYear[(int) $pm[3]] = get_permalink($p);
         }
@@ -1094,21 +1122,70 @@ require_once __DIR__ . '/events/events.php';
        original), or, if set, the Archive's copy straight away. Working pages the Archive lacks are sent to it. */
 require_once __DIR__ . '/links/links.php';
 
-/* 14. Files the pages do not need. Each was checked against every page of the site (October 2026):
+/* 14. Files a page does not need, left out of that page (checked against every page of the site, October 2026).
+       Each comes back by itself on a page that does need it, so the site keeps working as WordPress normally does:
        - the theme's jQuery UI effects (explode, slide, transfer and their core): nothing calls them;
-       - comment-reply.js: no page shows a comment form;
-       - Font Awesome's stylesheet and its 64 KB icon font: it drew only the Facebook and LinkedIn squares, which
-         theme-fixes.css now draws itself from the same outlines;
-       - the block editor's styles (block library, global styles, classic theme styles): no page uses blocks.
-       If any of these is ever needed again, delete its line. Global styles (9 KB of block colour and layout classes
-       no page uses) are not a plain file: WordPress builds them on every page load and prints them from the footer,
-       so they are switched off at the source instead (the two remove_action lines). */
+       - comment-reply.js: comments are closed everywhere and stay closed (Sam, October 2026);
+       - Font Awesome's stylesheet and its 64 KB icon font: theme-fixes.css draws the header's Facebook, LinkedIn and
+         Discord icons itself; it loads only if another of the header's social icons (Twitter, Google+, RSS,
+         Instagram, YouTube) is switched on in the theme's settings, or the theme's Social Icons widget is in the
+         sidebar, since those are drawn with it;
+       - the block editor's styles (block library, classic theme styles, and global styles: the colors, font sizes
+         and layouts a block can be given): only on a page built with blocks, or when a block widget is in the
+         sidebar. Custom HTML and Shortcode blocks need none of them (News and Events and the home page use those).
+       Global styles are not a plain file: WordPress builds them on every page load and prints them from the footer,
+       so on a page without blocks they are switched off at the source. */
+function bx_page_uses_blocks() {
+    static $uses = null;
+    if ($uses !== null) { return $uses; }
+    $plain = array('core/html', 'core/shortcode', 'core/freeform', 'core/missing');
+    $styled = function ($blocks) use (&$styled, $plain) {
+        foreach ($blocks as $b) {
+            if (!empty($b['blockName']) && !in_array($b['blockName'], $plain, true)) { return true; }
+            if (!empty($b['innerBlocks']) && $styled($b['innerBlocks'])) { return true; }
+        }
+        return false;
+    };
+    global $wp_query;
+    foreach ((array) (isset($wp_query->posts) ? $wp_query->posts : array()) as $p) {
+        if ($p instanceof WP_Post && has_blocks($p->post_content) && $styled(parse_blocks($p->post_content))) { return $uses = true; }
+    }
+    $widgets = null;
+    foreach ((array) wp_get_sidebars_widgets() as $area => $ids) {
+        if ($area === 'wp_inactive_widgets' || !is_array($ids)) { continue; }
+        foreach ($ids as $id) {
+            if (strpos((string) $id, 'block-') !== 0) { continue; }
+            if ($widgets === null) { $widgets = (array) get_option('widget_block'); }
+            $n = (int) substr($id, 6);
+            $c = isset($widgets[$n]['content']) ? (string) $widgets[$n]['content'] : '';
+            if ($c !== '' && $styled(parse_blocks($c))) { return $uses = true; }
+        }
+    }
+    return $uses = false;
+}
+add_action('wp_enqueue_scripts', function () {   // before WordPress queues global styles (priority 10)
+    if (!bx_page_uses_blocks()) {
+        remove_action('wp_enqueue_scripts', 'wp_enqueue_global_styles');
+        remove_action('wp_footer', 'wp_enqueue_global_styles', 1);
+    }
+}, 1);
 add_action('wp_enqueue_scripts', function () {
     foreach (array('jquery-effects-explode', 'jquery-effects-slide', 'jquery-effects-transfer', 'jquery-effects-core', 'comment-reply') as $h) { wp_dequeue_script($h); }
-    foreach (array('wdwt_font-awesome', 'wp-block-library', 'wp-block-library-theme', 'classic-theme-styles') as $h) { wp_dequeue_style($h); }
+    if (!bx_page_uses_blocks()) { foreach (array('wp-block-library', 'wp-block-library-theme', 'classic-theme-styles') as $h) { wp_dequeue_style($h); } }
+    $fa = false;
+    global $wdwt_front;
+    if (is_object($wdwt_front) && method_exists($wdwt_front, 'get_param')) {
+        foreach (array('twitter', 'google', 'rss', 'instagram', 'youtube') as $n) {   // the theme's own test (front_params_output.php)
+            if ($wdwt_front->get_param('show_' . $n . '_icon') == 'on' && $wdwt_front->get_param($n . '_url') != '') { $fa = true; break; }
+        }
+    }
+    if (!$fa) {   // the theme's Social Icons widget draws all its icons with the font
+        foreach ((array) wp_get_sidebars_widgets() as $area => $ids) {
+            if ($area !== 'wp_inactive_widgets' && is_array($ids) && preg_grep('/^news_magazine_social-/', $ids)) { $fa = true; break; }
+        }
+    }
+    if (!$fa) { wp_dequeue_style('wdwt_font-awesome'); }
 }, 100);
-remove_action('wp_enqueue_scripts', 'wp_enqueue_global_styles');
-remove_action('wp_footer', 'wp_enqueue_global_styles', 1);
 
 /* 15. Photos in page content come in the size they are shown at. WordPress does this for images inserted with
        Add Media; hand-written image tags named one fixed file, often far larger than shown. Each such image gets a
@@ -1161,6 +1238,53 @@ add_filter('wp_content_img_tag', function ($img) {
     $img = preg_match('/\sclass="/', $img) ? preg_replace('/\sclass="/', ' class="bx-fade ', $img, 1) : preg_replace('/^<img /', '<img class="bx-fade" ', $img);
     return preg_replace('/^<img /', '<img onload="this.classList.add(\'bx-in\')" onerror="this.classList.add(\'bx-in\')" ', $img);
 }, 20);
+/* The lightbox opens a photo that is not a link at its full size, guessed from the address the browser shows it
+   from: photo-1024x683.jpg opens photo.jpg. That guess fails for photos uploaded as WebP (block 21) that were over
+   2560 pixels: their full size is photo-scaled.webp (and photo.jpg is the untouched original). Only where a guess
+   from the photo's address or any of its srcset copies names a file that does not exist does the photo carry its
+   real full-size address for the lightbox (data-bx-full); every page as it is today is unchanged. */
+add_filter('wp_content_img_tag', function ($img) {
+    if (strpos($img, 'data-bx-full') !== false || !preg_match('/ src="([^"]*\/wp-content\/uploads\/[^"]+)"/', $img, $m)) { return $img; }
+    $src = html_entity_decode($m[1]);
+    $urls = array($src);
+    if (preg_match('/ srcset="([^"]+)"/', $img, $ss)) { foreach (explode(',', html_entity_decode($ss[1])) as $c) { $urls[] = strtok(trim($c), ' '); } }
+    $base = wp_get_upload_dir()['basedir'] . '/';
+    $missing = false;
+    foreach (array_unique($urls) as $u) {
+        $at = strpos((string) $u, '/wp-content/uploads/');
+        if ($at === false) { continue; }
+        $rel = rawurldecode(preg_replace('/-\d+x\d+(\.(jpe?g|png|gif|webp))$/i', '$1', (string) strtok(substr($u, $at + 20), '?#')));
+        if ($rel === '' || strpos($rel, "\0") !== false || strpos($rel, '..') !== false) { continue; }
+        if (!file_exists($base . $rel)) { $missing = true; break; }
+    }
+    if (!$missing) { return $img; }
+    $aid = bx_upload_attachment_id($src);   // the address decides, never a wp-image-123 class (it can be copied along with pasted HTML)
+    $full = $aid ? wp_get_attachment_url($aid) : '';
+    return $full ? preg_replace('/^<img /', '<img data-bx-full="' . esc_url($full) . '" ', $img) : $img;
+}, 25);
+/* A photo with neither width nor height has no size until it arrives, so the text under it jumps down when it does
+   (History's first photo). It gets its proportions in advance: aspect-ratio "auto W / H", from the file name's
+   -WxH or else the Media Library's record. "auto" means the photo's own proportions take over once it has loaded,
+   so the finished page is exactly as before; only the jump goes. Width and height attributes are deliberately not
+   added: they would change which photos WordPress loads lazily. */
+add_filter('wp_content_img_tag', function ($img) {
+    if (preg_match('/\s(width|height)=/i', $img) || stripos($img, 'aspect-ratio') !== false || !preg_match('/ src="([^"]*\/wp-content\/uploads\/[^"]+)"/', $img, $m)) { return $img; }
+    $src = html_entity_decode($m[1]);
+    if (preg_match('/-(\d+)x(\d+)\.[a-z0-9]+$/i', $src, $d)) { $w = (int) $d[1]; $h = (int) $d[2]; }
+    else {
+        $id = bx_upload_attachment_id($src);
+        $meta = $id ? wp_get_attachment_metadata($id) : null;
+        if (empty($meta['width']) || empty($meta['height'])) { return $img; }
+        $w = (int) $meta['width']; $h = (int) $meta['height'];
+    }
+    if ($w < 1 || $h < 1) { return $img; }
+    $ar = 'aspect-ratio: auto ' . $w . ' / ' . $h . ';';
+    if (preg_match('/\sstyle=(["\'])(.*?)\1/is', $img, $st)) {   // added to the photo's own style, in its own quotes
+        $old = rtrim(trim($st[2]));
+        return str_replace($st[0], ' style=' . $st[1] . $old . ($old !== '' && substr($old, -1) !== ';' ? '; ' : ($old !== '' ? ' ' : '')) . $ar . $st[1], $img);
+    }
+    return preg_replace('/^<img /', '<img style="' . $ar . '" ', $img);
+}, 30);
 
 /* 16. The News Magazine theme (Web-Dorado, version 1.1.12) was closed on WordPress.org in 2019 and will get no more
        updates. Its parts that anyone could reach but no page of this site uses are switched off here, from outside the
@@ -1235,6 +1359,17 @@ function bx_purge_all_pages_soon() {
     static $queued = false;
     if (!$queued) { $queued = true; add_action('shutdown', 'bx_purge_all_pages', 100); }
 }
+/* The same, wherever WordPress itself would expect the whole site to change:
+   - Nginx Helper's own "Purge Cache" (admin bar) and its purge after updates: it deletes files in a cache folder this
+     host does not have, so it said "Purge initiated" and emptied nothing; now every page is emptied after it runs;
+   - menus, widgets, the Customizer (theme settings, Additional CSS), and the site title, tagline and icon: they show
+     on every page, and Nginx Helper empties only the page or post that was saved. */
+add_action('rt_nginx_helper_after_fastcgi_purge_all', 'bx_purge_all_pages_soon', 10, 0);
+add_action('wp_update_nav_menu', 'bx_purge_all_pages_soon', 10, 0);
+add_action('customize_save_after', 'bx_purge_all_pages_soon', 10, 0);
+add_action('updated_option', function ($name) {
+    if ($name === 'sidebars_widgets' || strpos($name, 'widget_') === 0 || in_array($name, array('blogname', 'blogdescription', 'site_icon'), true)) { bx_purge_all_pages_soon(); }
+}, 10, 1);
 
 function bx_purge_all_pages() {
     global $nginx_purger;
@@ -1299,3 +1434,32 @@ add_action('wp_head', function () {
     echo '<style id="bx-404">.bx-404{border-top:2px solid var(--bx-navy);padding:14px 18px 0;text-align:center}'
         . 'html[data-theme="dark"] .bx-404{border-top-color:var(--bx-gold)}.bx-404 p{margin:0;line-height:1.6}</style>' . "\n";
 }, 120);
+
+/* 21. Photos uploaded to the Media Library are stored and served as WebP: about a third smaller than JPEG at the same
+       look, and shown by every current browser. WordPress (6.7 and later) does the work once told to, through
+       image_editor_output_format: every copy it makes (thumbnail, medium, large, 1536 and 2048 pixels) is WebP, and
+       so is the photo itself as pages and the lightbox show it ("full size"), re-saved at WordPress's usual quality,
+       after scaling to 2560 pixels when larger (as before). The uploaded file stays on the server untouched, as the
+       "original image" (Media Library > the photo > Original image), so nothing is lost. JPEG photos only (and
+       iPhone HEIC photos, which WordPress otherwise turns into JPEG): PNG files are left as they are, since they are
+       usually logos, screenshots or graphics with sharp edges or transparency. Photos already in the library are not
+       changed. If the server's image library cannot write WebP, uploads work exactly as before. */
+function bx_new_upload($seen = false) {
+    static $upload = false;
+    if ($seen) { $upload = true; }
+    return $upload;
+}
+add_filter('wp_handle_upload', function ($file) { bx_new_upload(true); return $file; }, 1);   // also sideloads
+add_filter('image_editor_output_format', function ($formats) {
+    // only for a photo being uploaded: editing a photo already in the library (Media Library > Edit Image) names its
+    // new file before it is saved and would lose it, and wp media regenerate would convert old photos. And not while
+    // the server stores a photo the browser itself is about to process (WordPress 7.1, block editor over HTTPS: it
+    // then switches big-photo scaling off with this exact filter): the browser makes the WebP copies, from the
+    // answer it gets once that step is over, and the uploaded file stays the original.
+    if (!bx_new_upload() || has_filter('big_image_size_threshold', '__return_false') === 100) { return $formats; }
+    static $webp = null;
+    if ($webp === null) { $webp = wp_image_editor_supports(array('mime_type' => 'image/webp')); }
+    if (!$webp) { return $formats; }
+    foreach (array('image/jpeg', 'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence') as $m) { $formats[$m] = 'image/webp'; }
+    return $formats;
+});

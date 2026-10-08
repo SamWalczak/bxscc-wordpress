@@ -24,7 +24,7 @@
    404, 410, any other 4xx except the ones below, any 5xx, or a page that now sends visitors to its site's home page
    (the usual sign of a deleted article), or to a domain-parking service. 401, 403, 429, 451 and 999 mean the site
    refuses automated checks: those links are listed as "could not check" and never called dead, as are links to
-   private network addresses, which are not requested at all.
+   private network addresses (or that redirect to one), which are not requested (see bx_lk_vet).
 
    Command line: wp bx-links run | wp bx-links list [--status=dead] | wp bx-links save <url> */
 
@@ -141,18 +141,92 @@ function bx_lk_widgets() {
 
 /* ---------- talking to the outside ---------- */
 
+/* ---------- never ask the server's own network ----------
+   A link, or any address a link redirects to, that points into a private, loopback, link-local, carrier or otherwise
+   reserved network is not requested: the link is listed as "could not check". Every request is vetted just before it
+   is sent (the first one and each redirect), against every IPv4 and IPv6 address its host name has, and the connection
+   then goes to exactly the addresses that were vetted (cURL's own lookup is skipped), so a name that answers
+   differently a moment later changes nothing. A host written as a number in an unusual form (0x7f000001, 2130706433,
+   0177.0.0.1) is refused outright: no real site is addressed that way. Only the weekly check pays for this: one more
+   DNS lookup (IPv6) per request. */
+function bx_lk_public_ip($ip) {
+    if (strpos($ip, ':') !== false) {
+        $b = @inet_pton($ip);
+        if ($b === false || strlen($b) !== 16) { return false; }
+        // IPv6 forms that carry an IPv4 address: mapped ::ffff:a.b.c.d, compatible ::a.b.c.d, NAT64 64:ff9b::/96, 6to4 2002::/16
+        if (substr($b, 0, 12) === str_repeat("\0", 10) . "\xff\xff" || substr($b, 0, 12) === str_repeat("\0", 12) || substr($b, 0, 12) === "\x00\x64\xff\x9b" . str_repeat("\0", 8)) {
+            return bx_lk_public_ip(inet_ntop(substr($b, 12)));
+        }
+        if (substr($b, 0, 2) === "\x20\x02") { return bx_lk_public_ip(inet_ntop(substr($b, 2, 4))); }
+        if (substr($b, 0, 8) === str_repeat("\0", 8) && substr($b, 8, 4) === "\xff\xff\0\0") { return bx_lk_public_ip(inet_ntop(substr($b, 12))); }   // IPv4-translated ::ffff:0:a.b.c.d
+        if (substr($b, 0, 6) === "\x00\x64\xff\x9b\x00\x01") { return false; }   // local-use NAT64 64:ff9b:1::/48 (the IPv4 address is not at a fixed place)
+        $b0 = ord($b[0]); $b1 = ord($b[1]);
+        if (($b0 & 0xfe) === 0xfc || ($b0 === 0xfe && ($b1 & 0x80) === 0x80) || $b0 === 0xff) { return false; }   // unique local, link-local and old site-local (fe80::/10, fec0::/10), multicast
+        return (bool) filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+    }
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) { return false; }
+    $n = ip2long($ip);
+    // ranges PHP's filter lets through: carrier NAT, IETF protocol assignments, benchmarking, multicast
+    foreach (array(array('100.64.0.0', 10), array('192.0.0.0', 24), array('198.18.0.0', 15), array('224.0.0.0', 4)) as $r) {
+        $mask = (-1 << (32 - $r[1])) & 0xffffffff;
+        if (($n & $mask) === (ip2long($r[0]) & $mask)) { return false; }
+    }
+    return true;
+}
+/* array('ok', CURLOPT_RESOLVE entries, or none for a literal address) | array('blocked') | array('unresolved', host) */
+function bx_lk_vet($url) {
+    $p = wp_parse_url($url);
+    $given = (string) ($p['host'] ?? '');
+    $host = strtolower(rtrim($given, '.'));
+    if ($host === '') { return array('blocked'); }
+    $port = isset($p['port']) ? (int) $p['port'] : (strtolower((string) ($p['scheme'] ?? '')) === 'https' ? 443 : 80);
+    if ($host[0] === '[') { return bx_lk_public_ip(trim($host, '[]')) ? array('ok', array()) : array('blocked'); }
+    if (preg_match('/^(0x[0-9a-f]*|\d+)(\.(0x[0-9a-f]*|\d+)){0,3}$/i', $host)) {   // a number: only the plain dotted form is accepted
+        $plain = preg_match('/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/', $host);
+        return $plain && bx_lk_public_ip($host) ? array('ok', array()) : array('blocked');
+    }
+    $name = $host;
+    if (preg_match('/[^\x21-\x7e]/', $name) && function_exists('idn_to_ascii')) { $name = (string) idn_to_ascii($name, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46) ?: $name; }
+    $v4 = @gethostbynamel($name);
+    $v4 = is_array($v4) ? $v4 : array();
+    $v6 = array();
+    if (function_exists('dns_get_record')) { foreach ((array) @dns_get_record($name, DNS_AAAA) as $rec) { if (!empty($rec['ipv6'])) { $v6[] = $rec['ipv6']; } } }
+    if (!$v4 && !$v6) { return array('unresolved', $host); }
+    foreach (array_merge($v4, $v6) as $ip) { if (!bx_lk_public_ip($ip)) { return array('blocked'); } }
+    $to = implode(',', $v4 ? $v4 : array_map(function ($a) { return '[' . $a . ']'; }, $v6));
+    // cURL looks the name up as the address spells it ("example.org." with its final dot is another entry to cURL),
+    // so the vetted addresses are given for every spelling
+    $entries = array();
+    foreach (array_unique(array($given, $host, $host . '.', $name, $name . '.')) as $h) { if ($h !== '' && $h !== '.') { $entries[] = $h . ':' . $port . ':' . $to; } }
+    return array('ok', $entries);
+}
+
 /* one check: 'ok', 'fail' or 'blocked', with the status code (0: no answer) and a note */
 function bx_lk_check($url) {
-    // never ask the server's own network: a link to a private or reserved address is not checked
-    $host = (string) wp_parse_url($url, PHP_URL_HOST);
-    $ip = filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) ? trim($host, '[]') : gethostbyname($host);
-    if (filter_var($ip, FILTER_VALIDATE_IP) && !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-        return array('blocked', 0, 'not checked: a private network address');
+    $pin = array();
+    $vet = function ($u) use (&$pin) {   // each request, the first and every redirect, just before it is sent
+        $v = bx_lk_vet((string) $u);
+        if ($v[0] === 'blocked') { throw new \WpOrg\Requests\Exception('bx-private', 'bx-private'); }
+        if ($v[0] === 'unresolved') { throw new \WpOrg\Requests\Exception('cURL error 6: Could not resolve host: ' . $v[1], 'curlerror'); }
+        $pin = $v[1];
+    };
+    $connect = function ($handle) use (&$pin) { if ($pin) { curl_setopt($handle, CURLOPT_RESOLVE, $pin); } };
+    add_action('requests-requests.before_request', $vet, 10, 1);
+    add_action('http_api_curl', $connect, 10, 1);
+    try {
+        $r = wp_remote_get($url, array(
+            'timeout' => 12, 'redirection' => 5, 'user-agent' => BX_LK_UA, 'limit_response_size' => 65536,
+            'headers' => array('Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', 'Accept-Language' => 'en-US,en;q=0.9'),
+        ));
+    } finally {
+        remove_action('requests-requests.before_request', $vet, 10);
+        remove_action('http_api_curl', $connect, 10);
+        // a refusal leaves the hook WordPress was running on its list of current hooks (the exception skipped the
+        // tidy-up), so it is taken off here
+        global $wp_current_filter;
+        while ($wp_current_filter && end($wp_current_filter) === 'requests-requests.before_request') { array_pop($wp_current_filter); }
     }
-    $r = wp_remote_get($url, array(
-        'timeout' => 12, 'redirection' => 5, 'user-agent' => BX_LK_UA, 'limit_response_size' => 65536,
-        'headers' => array('Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', 'Accept-Language' => 'en-US,en;q=0.9'),
-    ));
+    if (is_wp_error($r) && $r->get_error_message() === 'bx-private') { return array('blocked', 0, 'not checked: a private network address'); }
     if (is_wp_error($r)) { return array('fail', 0, $r->get_error_message()); }
     $code = (int) wp_remote_retrieve_response_code($r);
     if (in_array($code, array(401, 403, 429, 451, 999), true)) { return array('blocked', $code, 'the site refuses automated checks'); }
@@ -217,7 +291,7 @@ define('BX_LK_KEYS', 'bx_links_ia_keys');
 function bx_lk_box_key() {
     return sodium_crypto_generichash('bx-links-ia-keys|' . wp_salt('secure_auth'), '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
 }
-function bx_lk_seal($plain) {
+function bx_lk_seal(#[\SensitiveParameter] $plain) {
     $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
     return base64_encode($nonce . sodium_crypto_secretbox($plain, $nonce, bx_lk_box_key()));
 }
@@ -238,7 +312,7 @@ function bx_lk_ia_keys() {
     $k = json_decode((string) bx_lk_unseal($o['sealed']), true);
     return is_array($k) && !empty($k['a']) && !empty($k['s']) ? array('access' => (string) $k['a'], 'secret' => (string) $k['s'], 'from' => 'dashboard') : null;
 }
-function bx_lk_spn_headers($keys = null) {
+function bx_lk_spn_headers(#[\SensitiveParameter] $keys = null) {
     $h = array('Accept' => 'application/json');
     $k = $keys ? $keys : bx_lk_ia_keys();
     if ($k) { $h['Authorization'] = 'LOW ' . $k['access'] . ':' . $k['secret']; }
@@ -247,16 +321,18 @@ function bx_lk_spn_headers($keys = null) {
 /* ask Save Page Now for a capture: array(result, detail) with result
    'queued' (detail: job id), 'refused' (the Archive will not save this page; detail: why),
    'busy' (too many requests now; try later), 'keys' (the Archive wants archive.org keys), 'error' (no usable answer).
-   $keys: keys to try instead of the saved ones (the key form tests new keys before saving them). */
-function bx_lk_spn($url, $keys = null) {
+   $keys: keys to try instead of the saved ones (the key form tests new keys before saving them).
+   Requests that carry the keys never follow a redirect, so the keys cannot be sent on to another address. */
+function bx_lk_spn($url, #[\SensitiveParameter] $keys = null) {
     $r = wp_remote_post(apply_filters('bx_links_spn', BX_LK_SPN), array(
-        'timeout' => 30, 'user-agent' => BX_LK_UA, 'headers' => bx_lk_spn_headers($keys),
+        'timeout' => 30, 'redirection' => 0, 'user-agent' => BX_LK_UA, 'headers' => bx_lk_spn_headers($keys),
         'body' => array('url' => $url, 'skip_first_archive' => '1', 'if_not_archived_within' => '30d'),
     ));
     if (is_wp_error($r)) { return array('error', $r->get_error_message()); }
     $code = (int) wp_remote_retrieve_response_code($r);
     $j = json_decode(wp_remote_retrieve_body($r), true);
     if ($code === 429) { return array('busy', 'too many requests'); }
+    if ($code >= 300 && $code < 400) { return array('error', 'HTTP ' . $code . ', a redirect (not followed)'); }
     if (in_array($code, array(401, 403), true) || (!is_array($j) && $code >= 200 && $code < 500)) { return array('keys', 'HTTP ' . $code); }
     if (!is_array($j)) { return array('error', 'HTTP ' . $code); }
     if (!empty($j['job_id'])) { return array('queued', (string) $j['job_id']); }
@@ -268,7 +344,7 @@ function bx_lk_spn($url, $keys = null) {
 }
 /* how a Save Page Now job ended: array('success', timestamp) | array('pending', '') | array('error', why) | null */
 function bx_lk_spn_status($job) {
-    $r = wp_remote_get(trailingslashit(apply_filters('bx_links_spn', BX_LK_SPN)) . 'status/' . rawurlencode($job), array('timeout' => 20, 'user-agent' => BX_LK_UA, 'headers' => bx_lk_spn_headers()));
+    $r = wp_remote_get(trailingslashit(apply_filters('bx_links_spn', BX_LK_SPN)) . 'status/' . rawurlencode($job), array('timeout' => 20, 'redirection' => 0, 'user-agent' => BX_LK_UA, 'headers' => bx_lk_spn_headers()));
     if (is_wp_error($r) || (int) wp_remote_retrieve_response_code($r) !== 200) { return null; }
     $j = json_decode(wp_remote_retrieve_body($r), true);
     if (!is_array($j) || empty($j['status'])) { return null; }
@@ -546,8 +622,9 @@ function bx_lk_where($place) {
         return '<a href="' . esc_url((string) get_edit_post_link((int) $id)) . '">' . esc_html($t !== '' ? $t : '#' . $id) . '</a>';
     }
     if ($kind === 'e') {
-        global $wpdb;
-        $t = function_exists('bx_ev_table') ? $wpdb->get_var($wpdb->prepare('SELECT title FROM ' . bx_ev_table() . ' WHERE id = %d', (int) $id)) : '';
+        static $titles = null;   // every event's title in one query, for the whole report
+        if ($titles === null) { global $wpdb; $titles = function_exists('bx_ev_table') ? $wpdb->get_results('SELECT id, title FROM ' . bx_ev_table(), OBJECT_K) : array(); }
+        $t = isset($titles[(int) $id]) ? $titles[(int) $id]->title : '';
         return 'Event: <a href="' . esc_url(admin_url('admin.php?page=bx-event-edit&id=' . (int) $id)) . '">' . esc_html(wp_strip_all_tags((string) $t)) . '</a>';
     }
     if ($kind === 'w') { return '<a href="' . esc_url(admin_url('widgets.php')) . '">Sidebar widget</a>'; }
@@ -561,6 +638,10 @@ add_action('admin_menu', function () {
     add_management_page('Link check', 'Link check' . $bubble, 'manage_options', 'bx-links', 'bx_lk_screen');
 });
 
+/* one text field from a form or the address; '' for anything else (an array sent in its place, say) */
+function bx_lk_in($from, $key) {
+    return isset($from[$key]) && is_string($from[$key]) ? wp_unslash($from[$key]) : '';
+}
 function bx_lk_back($args) {
     wp_safe_redirect(add_query_arg($args, admin_url('tools.php?page=bx-links')));
     exit;
@@ -568,8 +649,8 @@ function bx_lk_back($args) {
 add_action('admin_post_bx_links_choice', function () {
     if (!current_user_can('manage_options')) { wp_die('Not allowed.'); }
     check_admin_referer('bx_links_choice');
-    $u = isset($_POST['url']) ? (string) wp_unslash($_POST['url']) : '';
-    $c = isset($_POST['choice']) ? (string) wp_unslash($_POST['choice']) : '';
+    $u = bx_lk_in($_POST, 'url');
+    $c = bx_lk_in($_POST, 'choice');
     $state = bx_lk_state();
     if (isset($state[$u]) && in_array($c, array('', 'archive', 'keep'), true)) {
         $state[$u]['choice'] = $c;
@@ -581,8 +662,8 @@ add_action('admin_post_bx_links_choice', function () {
 add_action('admin_post_bx_links_replace', function () {
     if (!current_user_can('manage_options')) { wp_die('Not allowed.'); }
     check_admin_referer('bx_links_replace');
-    $old = isset($_POST['url']) ? (string) wp_unslash($_POST['url']) : '';
-    $new = isset($_POST['new']) ? trim((string) wp_unslash($_POST['new'])) : '';
+    $old = bx_lk_in($_POST, 'url');
+    $new = trim(bx_lk_in($_POST, 'new'));
     $new = esc_url_raw($new, array('http', 'https'));
     $state = bx_lk_state();
     if (!isset($state[$old]) || $new === '' || !preg_match('#^https?://[^/\s]+#i', $new) || bx_lk_norm($new) === $old) { bx_lk_back(array('done' => 'badnew')); }
@@ -602,8 +683,8 @@ add_action('admin_post_bx_links_replace', function () {
 add_action('admin_post_bx_links_settings', function () {
     if (!current_user_can('manage_options')) { wp_die('Not allowed.'); }
     check_admin_referer('bx_links_settings');
-    $mode = isset($_POST['mode']) && $_POST['mode'] === 'auto' ? 'auto' : 'ask';
-    $email = isset($_POST['email']) ? sanitize_email(wp_unslash($_POST['email'])) : '';
+    $mode = bx_lk_in($_POST, 'mode') === 'auto' ? 'auto' : 'ask';
+    $email = sanitize_email(bx_lk_in($_POST, 'email'));
     update_option('bx_links_settings', array('mode' => $mode, 'email' => is_email($email) ? $email : ''), false);
     bx_lk_apply(bx_lk_state());
     bx_lk_back(array('done' => 'settings'));
@@ -617,8 +698,8 @@ add_action('admin_post_bx_links_keys', function () {
         delete_option(BX_LK_KEYS);
         bx_lk_back(array('done' => 'keys_removed'));
     }
-    $a = preg_replace('/\s+/', '', (string) wp_unslash(isset($_POST['access']) ? $_POST['access'] : ''));
-    $s = preg_replace('/\s+/', '', (string) wp_unslash(isset($_POST['secret']) ? $_POST['secret'] : ''));
+    $a = preg_replace('/\s+/', '', bx_lk_in($_POST, 'access'));
+    $s = preg_replace('/\s+/', '', bx_lk_in($_POST, 'secret'));
     if (!preg_match('/^[A-Za-z0-9]{8,64}$/', $a) || !preg_match('/^[A-Za-z0-9]{8,64}$/', $s) || $a === $s) { bx_lk_back(array('done' => 'keys_format')); }
     list($res, $detail) = bx_lk_spn(home_url('/'), array('access' => $a, 'secret' => $s));
     if ($res === 'keys') { bx_lk_back(array('done' => 'keys_rejected')); }
@@ -659,6 +740,9 @@ function bx_lk_screen() {
         return esc_html($s['note'] !== '' ? $r . ': ' . $s['note'] : $r);
     };
     $places = function ($s) { return implode('<br>', array_map('bx_lk_where', (array) $s['places'])); };
+    $ids = array();   // the pages and posts the report names, loaded in one query
+    foreach (array('dead', 'failing', 'blocked') as $k) { foreach ($by[$k] as $s) { foreach ((array) $s['places'] as $pl) { if (strpos($pl, 'p:') === 0) { $ids[] = (int) substr($pl, 2); } } } }
+    if ($ids) { _prime_post_caches(array_unique($ids), false, false); }
     $link = function ($u) { return '<a href="' . esc_url($u) . '" target="_blank" rel="noopener" style="word-break: break-all;">' . esc_html($u) . '</a>'; };
     $post = function ($action, $fields, $label, $class = 'small') {
         $h = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display: inline-block; margin: 4px 6px 0 0;"><input type="hidden" name="action" value="' . esc_attr($action) . '">';
@@ -678,7 +762,7 @@ function bx_lk_screen() {
         'keys_removed' => 'Keys removed. Pages are no longer sent to the Internet Archive to be saved; everything else works as before.',
     );
     $errors = array('badnew', 'keys_rejected', 'keys_format');
-    $done = isset($_GET['done']) ? (string) $_GET['done'] : '';
+    $done = bx_lk_in($_GET, 'done');
     $keys = bx_lk_ia_keys();
     $kopt = get_option(BX_LK_KEYS);
     $spn_mode = $keys ? 'with archive.org keys' : 'without archive.org keys, which the Internet Archive requires (see "Internet Archive keys" above)';

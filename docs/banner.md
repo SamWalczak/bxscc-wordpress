@@ -11,7 +11,7 @@ Every visit starts on a randomly chosen photo and continues in order from there.
 The page is cached as a whole by the server, so the choice cannot be made in PHP (every visitor would get the same cached choice). Instead:
 
 1. Before the page is sent, every slide's photo address moves from `src` into `data-src`, so the browser downloads nothing yet. Each `src` becomes a 1-pixel placeholder.
-2. A small script at the very top of `<head>` picks the start slide and preloads that one photo at high priority.
+2. A small script early in `<head>`, right after the viewport tags, picks the start slide and preloads that one photo at high priority. It has to come after them: until a phone has read the viewport tags it takes the page to be 980 pixels wide, and the preload would choose a copy for that width (on a 3x phone the 2560-pixel file, and then the slide a second, smaller copy).
 3. A script at the end of the header shows that slide in place of slide 1 before anything is painted, and updates the slide's title and description text to match.
 
 ## Loading in viewing order
@@ -43,7 +43,9 @@ The banner shows wide cropped copies. A slide whose uncropped photo is on the se
 
 **Where the photos go.** `wp-content/uploads/carousel-originals/`, as plain files (uploaded with the File Manager or the terminal, not the Media Library, so WordPress makes no resized copies and does not replace the file with a 2560-pixel one). Each is named after its slide without WordPress's endings: the slide `carousel2-cropped-scaled.jpg` opens `carousel2.jpg`. `.jpg`, `.jpeg`, `.png` and `.webp` all work, in any letter case. A new slide gets the same feature by adding its photo here under the matching name; nothing in the plugin changes. The page cache must be emptied afterwards, because the links are written into the page.
 
-**When they download.** They are large (3 to 13 MB, about 36 MB for the six), so none comes with the page:
+**How large.** At most 4800 pixels on the long side, saved as JPEG at quality 90, with the camera's metadata dropped (the color profile is kept). That is sharper than any screen shows in the lightbox, including 4K, and at screen size it cannot be told from the camera file (measured: compared at 2560 pixels wide, the difference is under the level of the camera's own noise). The camera files were up to 60 megapixels and 19.7 MB (slide 3); the nine are now 28 MB in all (the six already on the site went from 37 MB to 20 MB). JPEG rather than WebP on purpose: browsers decode a large JPEG at the size it is shown, a WebP always at full size, so in the lightbox a WebP of this size appeared 200 to 430 ms after the key press against 11 to 90 ms for the JPEG.
+
+**When they download.** They are large (2.3 to 4.7 MB, 28 MB for the nine), so none comes with the page:
 
 1. Nothing is fetched until the page's load event has fired and every banner slide has arrived (or 30 seconds after the load event, if a slide never does), and never while one of the page's own photos is downloading: a photo further down starts when the visitor scrolls toward it, and then a background download under way stops (it is fetched again once the page's photos are in).
 2. Then they download one at a time, at low priority, starting with the slide on screen and then its neighbors on both sides, nearest first (while the lightbox is open, the slide it shows), so the photo one arrow away in either direction is usually already there.
@@ -56,7 +58,7 @@ The script that does this is added to the end of the page only when the page has
 
 **The banner follows the lightbox.** While the lightbox shows banner photos, the slideshow does not advance (the theme's timer is stopped, and its restarts, when the pointer leaves the banner or the window regains focus, are ignored). Moving left or right in the lightbox (arrows, keys or swipe) moves the banner to the same photo, without a crossfade since it is behind the lightbox, at the moment the lightbox has drawn the new photo, so the two change together (measured within one frame of each other). On closing, the banner is on the photo the lightbox showed and plays on from it, with a full interval before the next change; as always, it waits while the pointer is over it. Photos from the page content in the lightbox leave the slideshow alone.
 
-Current photos (October 2026): slides 1, 2, 4, 6, 8 and 9. Slides 3, 5 and 7 have no uncropped photo yet.
+Current photos (October 2026): all nine slides. Slides 3, 5 and 7 were added on October 8 (the Enoch Pratt Free Library visit, April 8, 2025, photo by John Cassini, 9504 by 6336 pixels; the 40th anniversary celebration in Xiamen, July 2025; the Xiamen Library, July 18, 2025), matched to their slides by comparing image features.
 
 ## Arrows
 

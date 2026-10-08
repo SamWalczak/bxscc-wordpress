@@ -372,7 +372,7 @@ add_shortcode('bx_year', function ($atts) {
    bx_year_decades in the main plugin file, block 9, shared with the Youth Ambassadors list [bx_ya_years]) */
 add_shortcode('bx_years', function () {
     $byYear = array();
-    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false)) as $p) {
+    foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false, 'update_post_term_cache' => false)) as $p) {
         if (preg_match('/^news-and-media-(\d{4})$/', $p->post_name, $m)) { $byYear[(int) $m[1]] = get_permalink($p); }
     }
     return bx_year_decades($byYear);

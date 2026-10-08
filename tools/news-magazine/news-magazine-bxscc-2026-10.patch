@@ -1,5 +1,6 @@
---- a/news-magazine/inc/admin/page_slider.php
-+++ b/news-magazine/inc/admin/page_slider.php
+diff -ru a/news-magazine/inc/admin/page_slider.php b/news-magazine/inc/admin/page_slider.php
+--- a/news-magazine/inc/admin/page_slider.php	2026-10-08 10:45:13.562218165 -0400
++++ b/news-magazine/inc/admin/page_slider.php	2026-10-08 10:45:13.563739803 -0400
 @@ -4,6 +4,7 @@
  {
  
@@ -8,32 +9,10 @@
    public $options;
  
    function __construct()
---- a/news-magazine/inc/lib/WDWT_input.php
-+++ b/news-magazine/inc/lib/WDWT_input.php
-@@ -144,7 +144,7 @@
- 
- 
- 
--function wdwt_param_clean($input, $default = false, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array())
-+function wdwt_param_clean($input, $default, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array()) /* BXSCC 2026-10: "= false" removed from $default (PHP 8 deprecation; behavior unchanged) */
- {
- 
-   $allowed_footer_html = apply_filters( 'wp_kses_allowed_html', "", "allowed_footer_html" );
---- a/news-magazine/inc/front/front_params_output.php
-+++ b/news-magazine/inc/front/front_params_output.php
-@@ -1019,8 +1019,8 @@
-     $top_post_categories = implode(',', $this->get_param('latest_post_categories', array(), array('')));
- 
- //var_dump($latest_post_categories);
--    $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish'));
-     if ($latest_posts_enable && $latest_posts_count > 0) {
-+      $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish')); /* BXSCC 2026-10: moved inside the if, so the query runs only when the ticker is on */
-       ?>
-       <div id="latest_posts">
-         <b><?php echo $latest_posts_text; ?></b>
---- a/news-magazine/inc/front/WDWT_front_functions.php
-+++ b/news-magazine/inc/front/WDWT_front_functions.php
-@@ -96,6 +96,32 @@
+diff -ru a/news-magazine/inc/front/WDWT_front_functions.php b/news-magazine/inc/front/WDWT_front_functions.php
+--- a/news-magazine/inc/front/WDWT_front_functions.php	2026-10-08 10:45:13.587672913 -0400
++++ b/news-magazine/inc/front/WDWT_front_functions.php	2026-10-08 10:45:13.589562654 -0400
+@@ -96,6 +96,36 @@
    }
  
  
@@ -50,7 +29,11 @@
 +      if (strpos($url, $base) !== 0) {
 +        continue;
 +      }
-+      $file = realpath(rtrim($pair[1], '/') . '/' . rawurldecode(strtok(substr($url, strlen($base)), '?#')));
++      $rel = rawurldecode((string) strtok(substr($url, strlen($base)), '?#'));
++      if (strpos($rel, "\0") !== false) { /* BXSCC 2026-10: a %00 in the address would make realpath() throw on PHP 8 */
++        break;
++      }
++      $file = realpath(rtrim($pair[1], '/') . '/' . $rel);
 +      $root = realpath($pair[1]);
 +      if ($file && $root && strpos($file, $root . DIRECTORY_SEPARATOR) === 0) {
 +        $size = @getimagesize($file);
@@ -66,7 +49,7 @@
    /**
     *  Get first image of post for thumbnail
     */
-@@ -151,7 +177,7 @@
+@@ -151,7 +181,7 @@
        }
      }
      if ($thumb_url) {
@@ -75,3 +58,28 @@
        if ($w == 0) {
          $w = 10;
        }
+diff -ru a/news-magazine/inc/front/front_params_output.php b/news-magazine/inc/front/front_params_output.php
+--- a/news-magazine/inc/front/front_params_output.php	2026-10-08 10:45:13.577290289 -0400
++++ b/news-magazine/inc/front/front_params_output.php	2026-10-08 10:45:13.578889022 -0400
+@@ -1019,8 +1019,8 @@
+     $top_post_categories = implode(',', $this->get_param('latest_post_categories', array(), array('')));
+ 
+ //var_dump($latest_post_categories);
+-    $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish'));
+     if ($latest_posts_enable && $latest_posts_count > 0) {
++      $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish')); /* BXSCC 2026-10: moved inside the if, so the query runs only when the ticker is on */
+       ?>
+       <div id="latest_posts">
+         <b><?php echo $latest_posts_text; ?></b>
+diff -ru a/news-magazine/inc/lib/WDWT_input.php b/news-magazine/inc/lib/WDWT_input.php
+--- a/news-magazine/inc/lib/WDWT_input.php	2026-10-08 10:45:13.569705965 -0400
++++ b/news-magazine/inc/lib/WDWT_input.php	2026-10-08 10:45:13.571277717 -0400
+@@ -144,7 +144,7 @@
+ 
+ 
+ 
+-function wdwt_param_clean($input, $default = false, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array())
++function wdwt_param_clean($input, $default, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array()) /* BXSCC 2026-10: "= false" removed from $default (PHP 8 deprecation; behavior unchanged) */
+ {
+ 
+   $allowed_footer_html = apply_filters( 'wp_kses_allowed_html', "", "allowed_footer_html" );

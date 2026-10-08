@@ -9,7 +9,7 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Events** | Events are small records (title, dates, time or note, location, description) in their own table. They appear in reusable *sections* on any page, and on automatic yearly archive pages. Dates can be days, months, seasons or years, single or spans. | [docs/events.md](docs/events.md) |
 | **Site CSS** | All site styling lives in two files in the plugin, `css/components.css` and `css/theme-fixes.css`, editable from **Appearance > Site CSS** with a saved, comparable, restorable history of every version. Dashboard editing of PHP files is switched off. | [docs/site-css.md](docs/site-css.md) |
 | **Banner** | Fixes and improvements to the theme's home page slideshow: random start slide, fast loading in viewing order, each screen downloading a photo size it needs, a placeholder while a photo loads, true crossfades, arrows that never freeze or fight the timer, and uncropped photos in the lightbox, downloaded after everything else. | [docs/banner.md](docs/banner.md) |
-| **Photos** | Photo grids for page content, a lightbox for every content photo (grouped, keyboard and swipe navigation, captions), hand-written photo tags served in the size they are shown at, and photos that appear whole (with the banner's loading box while one downloads) instead of drawing from the top down. | [docs/photos.md](docs/photos.md) |
+| **Photos** | Photo grids for page content, a lightbox for every content photo (grouped, keyboard and swipe navigation, captions), hand-written photo tags served in the size they are shown at, photos that appear whole (with the banner's loading box while one downloads) instead of drawing from the top down, and new uploads stored as WebP (the uploaded file kept as the original). | [docs/photos.md](docs/photos.md) |
 | **Dead links** | Every link to another site is checked weekly. One that fails three weekly checks in a row triggers an email; the report then offers the Internet Archive's copy of the page from around when the link was added (swapped in as pages are built), a new address (written into every page and event that has the old one), or keeping the original. A setting makes the archive swap automatic. Working pages the Archive has never captured are sent to its Save Page Now service. Report and settings: **Tools > Link check**. | [docs/links.md](docs/links.md) |
 | **Video previews** | YouTube videos show a thumbnail and load the player (privacy-enhanced mode) only when clicked. | [docs/video-previews.md](docs/video-previews.md) |
 | **Header and footer** | Two-line site title, correct social-icon labels (including a Discord icon), current copyright year with a bilingual line. | [docs/header-and-footer.md](docs/header-and-footer.md) |
@@ -18,7 +18,7 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Page markup** | The table, grid and button-bar patterns page content uses, and the CSS classes that style them. | [docs/page-markup.md](docs/page-markup.md) |
 | **Fonts** | Self-hosted Open Sans (no Google Fonts requests), with fallback metrics so text does not jump. | [docs/fonts.md](docs/fonts.md) |
 | **News Magazine theme** | The theme has had no updates since 2019. Its unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off, and its layout widths are kept valid; four small theme-file edits are in `tools/news-magazine/`. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
-| **Performance and security** | Unused scripts, styles and the icon font not loaded, emoji scripts off, key images and fonts preloaded; XML-RPC off, and how the plugin's own forms, queries and page rewrite are protected. | [docs/performance-and-security.md](docs/performance-and-security.md) |
+| **Performance and security** | Scripts, styles and the icon font a page does not need are left out of it, emoji scripts off, key images and fonts preloaded; XML-RPC off, security headers, the link checker kept out of the server's own network, and how the plugin's own forms, queries and page rewrite are protected. The October 2026 audit is summarized there. | [docs/performance-and-security.md](docs/performance-and-security.md) |
 
 Maintenance (installing, updating, page caching, troubleshooting, changing themes): [docs/maintenance.md](docs/maintenance.md).
 
@@ -51,6 +51,7 @@ fonts/                            Open Sans woff2 files and their license (SIL O
 docs/                             feature documentation
 tools/migration/                  one-time scripts used to move the old hand-written event pages into the events table
 tools/ya-years.php                one-time script that put the year list on the Youth Ambassadors Program page
+tools/photo-loading.php           one-time script that fixed the loading order of four photos (October 2026 audit)
 tools/news-magazine/              the patch applied to the News Magazine theme's own files (not part of the plugin)
 ```
 

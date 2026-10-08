@@ -1,10 +1,15 @@
 # Performance and security
 
-Code: blocks 3d, 4, 5, 6, 10, 11, 14, 15 and 17 of `bxscc-wordpress-enhancements.php`, plus the checks described below in `css-editor.php` and `events/`.
+Code: blocks 3d, 4, 4b, 5, 6, 10, 11, 14, 15, 17, 18 and 21 of `bxscc-wordpress-enhancements.php`, plus the checks described below in `css-editor.php`, `events/` and `links/`.
+
+The October 2026 audit (version 1.69) is summarized at the end.
 
 ## Security
 
-- **XML-RPC is off** (`xmlrpc_enabled` returns false). The site does not use it (no remote publishing apps, no pingbacks), and it is a common target for password-guessing attacks.
+- **XML-RPC is off** (`xmlrpc_enabled` returns false). The site does not use it (no remote publishing apps, no pingbacks), and it is a common target for password-guessing attacks. That setting covers only the methods that need a login, so the pingback methods are removed as well, and the head no longer advertises the remote-publishing address (RSD). (`system.multicall`, which bundles several calls into one request, cannot be removed this way, since WordPress's XML-RPC server adds it back itself; with logins off it has nothing harmful to bundle.)
+- **Security headers on every page** (block 4b): `X-Content-Type-Options: nosniff` (browsers take each response as the type the server states), and `X-Frame-Options: SAMEORIGIN` with `Content-Security-Policy: frame-ancestors 'self'` (other sites cannot show the pages inside a frame of theirs, the basis of clickjacking). The site's own frames (the Customizer preview) work as before, and WordPress embeds (`/embed/` addresses, made for other sites) get neither frame header. A header another plugin already set through WordPress is left alone. The values never vary, so the Nginx cache stores and replays them with each page.
+- **The link checker never requests the server's own network** (`links/links.php`, `bx_lk_vet`): a link, or anything it redirects to, that points at a private, loopback, link-local, carrier-grade or reserved address is not requested. Each request is checked just before it goes out (the first and every redirect), against all of the host's IPv4 and IPv6 addresses, and the connection is pinned to the addresses checked, so DNS that answers differently a moment later changes nothing. Numeric hosts in unusual notation (`0x7f000001`, `2130706433`) are refused. Until 1.69 only the first address was checked, by IPv4 name lookup: a linked site that redirected to `127.0.0.1`, or a hex-written address, reached the server's own network (confirmed on a test copy).
+- **The archive.org keys go only to the Archive.** Requests that carry them never follow a redirect (until 1.69 a redirect to another host received the keys). The keys are stored encrypted and never shown again, and the functions that handle them mark them as sensitive, so PHP 8.2 and later leave them out of error traces; see [links.md](links.md).
 - **PHP cannot be edited from the dashboard**, by anyone; see [site-css.md](site-css.md#php-cannot-be-edited-from-the-dashboard). That switch lives in this plugin, so it is off only while the plugin is active. `define('DISALLOW_FILE_EDIT', true);` in `wp-config.php` does the same without depending on any plugin, and is worth setting as well.
 - **Every dashboard action checks who is asking and that the request came from the form**: a capability check (`edit_pages` for events, `edit_theme_options` for Site CSS) and a WordPress nonce on every save, delete and restore. Nothing is open to visitors who are not logged in (no `nopriv` handlers, no AJAX or REST endpoints).
 - **Database queries** with any outside value go through `$wpdb->prepare()` or are cast to integers.
@@ -33,7 +38,7 @@ No page got heavier. Every page was also compared before and after at six screen
 
 What changed:
 
-- **Unused files are not loaded** (block 14): the theme's jQuery UI effects (nothing calls them), `comment-reply.js` (no page has a comment form), the block editor's stylesheets and WordPress's 9 KB of "global styles" (no page uses blocks), and Font Awesome's stylesheet and 64 KB icon font. The icon font drew only the Facebook and LinkedIn squares, which `theme-fixes.css` now draws from the same outlines (see [header-and-footer.md](header-and-footer.md#social-icons)). Each was checked against every page of the site; if one is ever needed again, delete its line.
+- **Files a page does not need are left out of it** (block 14), and come back by themselves where they are needed, so WordPress keeps working normally: the theme's jQuery UI effects (nothing calls them); `comment-reply.js` (comments stay closed); the block editor's stylesheets and WordPress's "global styles" (the colors, font sizes and layouts a block can be given), left out unless the page was built with blocks or a block widget is in the sidebar (Custom HTML and Shortcode blocks, which the home page and News and Events use, need none of it); and Font Awesome's stylesheet and 64 KB icon font, left out unless one of the theme's other social icons (Twitter, Google+, RSS, Instagram, YouTube) is switched on in its settings, or its Social Icons widget is in the sidebar. The header's Facebook, LinkedIn and Discord icons are drawn by `theme-fixes.css` (see [header-and-footer.md](header-and-footer.md#social-icons)). Until 1.69 the block styles and the icon font were left out everywhere: a new page built with blocks lost its colors and button styles, and a newly switched-on icon showed an empty square.
 - **jQuery Migrate stays.** It looks unused, but the theme's slideshow code calls `jQuery(window).load(...)`, which jQuery 3 removed and Migrate restores. Without it the banner would not size or start.
 - **Photos come in the size they are shown at** (block 15): see [photos.md](photos.md#photo-sizes) and [banner.md](banner.md#photo-size).
 - **One database query for all of a page's photos.** Finding which upload a photo address belongs to takes one query for every photo on the page, and their details load together, instead of up to five queries per photo.
@@ -47,6 +52,9 @@ What changed:
 - **Banner photos** load on demand and in viewing order; see [banner.md](banner.md).
 - **Video previews** load YouTube only on click, and fetch the thumbnail only when the preview comes near the screen; see [video-previews.md](video-previews.md).
 - **CSS is inline**, two blocks at the end of `<head>`, with no extra stylesheet requests and without the files' comments and spacing; see [site-css.md](site-css.md).
+- **New photos are WebP** (block 21): see [photos.md](photos.md#new-uploads-are-webp).
+- **No jump under photos without dimensions** (block 15): see [photos.md](photos.md#photo-sizes).
+- **The year lists skip a lookup they do not use** (categories of the yearly posts): one query fewer on News and Events and on each yearly post. The Link check report loads its pages and event titles in two queries instead of one per place listed.
 
 ## Settings outside this plugin
 
@@ -55,3 +63,15 @@ One-time changes on the server, not code, found in the same review:
 - **Autoloaded options.** WordPress loads every "autoload" option on every uncached request. On bxscc.org, 237 KB of the 307 KB came from plugins and a theme no longer active, plus a stale folder-size cache. Switching those to not autoload (`wp_set_options_autoload()`) keeps them in the database but out of every request. Housekeeping more than speed: on a local copy the difference in page time was within measuring noise.
 - **Third-party files in the sidebar.** The PayPal donate button's image was loaded from baltimoresistercities.org, and PayPal's tracking pixel from paypalobjects.com, on every page. Hosting the button image in the site's Media Library and deleting the pixel removes two outside connections from every page, and PayPal's record of every visit; the button works the same.
 - **Unused plugins.** An active plugin's PHP runs on every uncached request even if nothing on the site uses it.
+
+## October 2026 audit (version 1.69)
+
+Three independent reviews (the plugin's security, the theme's security, speed), each finding reproduced on a copy of the site before it was fixed. Nothing visitors see changed: all 45 page types (every page and post, the 404, search, archives) were compared as screenshots at 1280 and 390 pixels before and after, identical except one page whose screenshot also differs between two runs of the same version.
+
+Fixed: the link checker's private-address check (bypassable by a redirect or a hex address), archive.org keys following redirects, the pingback XML-RPC methods, form fields that crashed on an array, an unencoded search term in the Events list's page links, a fatal error in the theme's thumbnail code for an address containing `%00` (see [news-magazine-theme.md](news-magazine-theme.md)), security headers added. Normal WordPress use restored where earlier speed work had narrowed it: block styles, the icon font, and Nginx Helper's Purge Cache button (see [maintenance.md](maintenance.md#page-cache)).
+
+Faster: phones no longer download the 2560-pixel banner photo before the one they show (the start slide's preload ran before the page's viewport settings, so a phone took the page to be 980 pixels wide; on a 3x phone the start photo arrived 1.6 seconds sooner), no layout jump under the History page's first photo (layout shift 0.062 to 0), uncropped banner photos 74 MB to 28 MB (capped at 4800 pixels; see [banner.md](banner.md#uncropped-photos-in-the-lightbox)), new photos stored as WebP, and four photos whose loading order was wrong (`tools/photo-loading.php`, a content change: the main photo on History, Mission Overview and the Youth Ambassadors pages shows 0.3 to 1.2 seconds sooner on a slow phone connection).
+
+Checked and sound: every dashboard form (capability and nonce), SQL, the Site CSS editor, the page rewrite against crafted pages and search terms, the inline scripts (no unsafe use of the address, captions or data), the shortcodes, email, cron, cache safety (no page varies by cookie or header), and the theme's earlier fixes (the removed AJAX handlers stay removed).
+
+Recommended outside the plugin (not code): a `.htaccess` rule refusing direct requests to the theme's PHP files (27 of them stop with a fatal error when requested directly, which writes to an `error_log` each time), cache lifetimes for CSS, JavaScript and fonts, Wordfence's option against username discovery, and a one-time check that `wp-config.php` has its own secret keys (the archive.org keys are encrypted with them).

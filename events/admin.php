@@ -72,7 +72,7 @@ function bx_ev_screen_list() {
       if ($pages > 1) {
           echo '<p>';
           for ($i = 1; $i <= $pages; $i++) {
-              echo $i === $pg ? '<strong style="margin-right:8px;">' . $i . '</strong>' : '<a style="margin-right:8px;" href="' . esc_url(bx_ev_url('bx-events', array('paged' => $i, 's' => $q, 'yr' => $yr))) . '">' . $i . '</a>';
+              echo $i === $pg ? '<strong style="margin-right:8px;">' . $i . '</strong>' : '<a style="margin-right:8px;" href="' . esc_url(bx_ev_url('bx-events', array('paged' => $i, 's' => rawurlencode($q), 'yr' => $yr))) . '">' . $i . '</a>';
           }
           echo '</p>';
       }
