@@ -144,7 +144,7 @@ add_filter('wp_kses_allowed_html','wdwt_allowed_html_custom',10, 2);
 
 
 
-function wdwt_param_clean($input, $default = false, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array())
+function wdwt_param_clean($input, $default, $param_type, $sanitize_type = '', $validate_type = '', $valid_options = array()) /* BXSCC 2026-10: "= false" removed from $default (PHP 8 deprecation; behavior unchanged) */
 {
 
   $allowed_footer_html = apply_filters( 'wp_kses_allowed_html', "", "allowed_footer_html" );

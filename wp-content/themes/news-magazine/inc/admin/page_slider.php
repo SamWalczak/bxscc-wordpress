@@ -4,6 +4,7 @@ class WDWT_slider_page_class
 {
 
   public $shorthomepage;
+  public $shortslider; /* BXSCC 2026-10: declared; PHP 8.2+ deprecates setting undeclared properties */
   public $options;
 
   function __construct()

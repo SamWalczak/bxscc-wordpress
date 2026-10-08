@@ -1019,8 +1019,8 @@ class news_magazine_front extends WDWT_front
     $top_post_categories = implode(',', $this->get_param('latest_post_categories', array(), array('')));
 
 //var_dump($latest_post_categories);
-    $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish'));
     if ($latest_posts_enable && $latest_posts_count > 0) {
+      $recent_posts = wp_get_recent_posts(array('category' => $top_post_categories, 'numberposts' => $latest_posts_count, 'post_status' => 'publish')); /* BXSCC 2026-10: moved inside the if, so the query runs only when the ticker is on */
       ?>
       <div id="latest_posts">
         <b><?php echo $latest_posts_text; ?></b>

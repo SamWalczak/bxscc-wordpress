@@ -96,6 +96,36 @@ class WDWT_frontend_functions
   }
 
 
+  /* BXSCC 2026-10: the width and height of an image of this site, read from its file on disk. The theme used to fetch
+     the image over HTTP to measure it: a request from the server to itself for each listed post, or to any other
+     site a post's first image pointed at. Images that are not on this site count as unknown (0 x 0), which the
+     theme already handles. */
+  public static function local_image_size($url)
+  {
+    $url = preg_replace('#^https?:#', '', (string) $url);
+    $up = wp_get_upload_dir();
+    foreach (array(array($up['baseurl'], $up['basedir']), array(content_url(), WP_CONTENT_DIR)) as $pair) {
+      $base = rtrim(preg_replace('#^https?:#', '', $pair[0]), '/') . '/';
+      if (strpos($url, $base) !== 0) {
+        continue;
+      }
+      $rel = rawurldecode((string) strtok(substr($url, strlen($base)), '?#'));
+      if (strpos($rel, "\0") !== false) { /* BXSCC 2026-10: a %00 in the address would make realpath() throw on PHP 8 */
+        break;
+      }
+      $file = realpath(rtrim($pair[1], '/') . '/' . $rel);
+      $root = realpath($pair[1]);
+      if ($file && $root && strpos($file, $root . DIRECTORY_SEPARATOR) === 0) {
+        $size = @getimagesize($file);
+        if ($size) {
+          return array($size[0], $size[1]);
+        }
+      }
+      break;
+    }
+    return array(0, 0);
+  }
+
   /**
    *  Get first image of post for thumbnail
    */
@@ -151,7 +181,7 @@ class WDWT_frontend_functions
       }
     }
     if ($thumb_url) {
-      list($w, $h) = @getimagesize($thumb_url);
+      list($w, $h) = self::local_image_size($thumb_url); /* BXSCC 2026-10: was @getimagesize($thumb_url), an HTTP fetch of the image */
       if ($w == 0) {
         $w = 10;
       }
