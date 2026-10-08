@@ -168,6 +168,13 @@ p + .bx-section { margin-top: 24px; }   /* a section after ordinary text (Profil
 :is(.entry, .entry-content) blockquote.bx-quote { margin: 0; padding: 0 0 0 18px; border-left: 3px solid var(--bx-navy); color: var(--bx-text); font-size: inherit; font-style: normal; }
 :is(.entry, .entry-content) blockquote.bx-quote p { margin: 0 0 10px; line-height: 1.6; }
 :is(.entry, .entry-content) blockquote.bx-quote p:last-child { margin-bottom: 0; }
+/* inside a table (the note in the 2018 Thanks table): set in further, with a thin gray rule like the sidebar's dividers
+   instead of the reflections' navy one (also in dark mode; above the words on phones) */
+:is(.entry, .entry-content) td blockquote.bx-quote { margin-left: 24px; border-left: 1px solid var(--bx-line); }
+html[data-theme="dark"] :is(.entry, .entry-content) td blockquote.bx-quote { border-color: var(--bx-line); }
+@media (max-width: 599px) {
+  :is(.entry, .entry-content) td blockquote.bx-quote { margin-left: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--bx-line); }
+}
 
 /* ---------- reflections (Youth Ambassadors year pages): a section without a table, like the not-found page (the navy line
    under the heading); each ambassador's photo with name, years of study and video link under it, the quote beside it,
