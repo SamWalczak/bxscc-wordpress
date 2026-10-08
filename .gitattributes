@@ -1,2 +1,4 @@
-# GitHub's "Download ZIP" (git archive) leaves out the one-time migration scripts: the server does not need them
+# GitHub's "Download ZIP" (git archive) leaves out the one-time scripts: the server does not need them
 /tools export-ignore
+# Keep the theme byte for byte as it is on the server (some of its files use Windows line endings)
+/wp-content/themes/news-magazine/** -text

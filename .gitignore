@@ -1,2 +1,5 @@
-css/history/
+# Site CSS writes every saved version here on the server
+wp-content/plugins/bxscc-wordpress-enhancements/css/history/
+# PHP error logs cPanel writes next to the script that raised them
+error_log
 .DS_Store
