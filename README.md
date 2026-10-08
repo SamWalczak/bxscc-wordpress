@@ -64,6 +64,7 @@ tools/news-magazine/              the patch applied to the News Magazine theme's
 | Option `bx_ev_year_lock_YYYY` | Exists only for the moment a yearly page is being made. |
 | Options `bx_links`, `bx_links_map`, `bx_links_queue`, `bx_links_run` | Every outside link with its check history, choice and Internet Archive status; the dead links swapped for archived copies; the links left in the current run; when the last run started and finished. |
 | Options `bx_links_settings`, `bx_links_pending`, `bx_links_log` | Warn or swap automatically, and where warnings go; how many dead links wait for a choice; the last 50 replacements with a new address. |
+| Option `bx_links_ia_keys` | The archive.org keys entered on Tools > Link check, encrypted (see [docs/links.md](docs/links.md)); not autoloaded. |
 | Transient `bx_links_lock` | Exists only while a batch of link checks runs. |
 | Scheduled events `bx_links_weekly`, `bx_links_batch` | The weekly start of the link check, and its follow-on batches. |
 | Transient `bx_css_err_<user id>` | Why a Site CSS save was refused, kept for one minute to show on the next screen. |

@@ -12,8 +12,9 @@
 
    The Internet Archive can only offer copies it has. So, after the checks, every working link the Archive has never
    captured is sent to its Save Page Now service, once a month at most per link, so that a copy exists if the page
-   later disappears. Optional archive.org keys (BX_IA_ACCESS_KEY and BX_IA_SECRET_KEY in wp-config.php, from
-   https://archive.org/account/s3.php) raise the Archive's limits; without them the requests go in anonymously.
+   later disappears. Save Page Now takes these requests only with an archive.org account's keys (from
+   https://archive.org/account/s3.php), entered on Tools > Link check or set in wp-config.php (see bx_lk_ia_keys);
+   without keys, pages are not sent and everything else works.
 
    Where links are found: published pages and posts, the events table (most of the site's links are there, which is
    why no post-content link plugin covers this site), the text and HTML widgets placed in a sidebar, and menus.
@@ -204,19 +205,52 @@ function bx_lk_captured($url) {
     return $rows === null ? null : ($rows ? $rows[0][0] : '');
 }
 
-function bx_lk_spn_headers() {
-    $h = array('Accept' => 'application/json');
+/* ---------- archive.org keys (optional; Save Page Now accepts this site's requests only with them) ----------
+   Two places, the first one found is used:
+   - wp-config.php: define('BX_IA_ACCESS_KEY', '...'); define('BX_IA_SECRET_KEY', '...');
+   - Tools > Link check, for administrators, so that someone without a terminal can set them. Stored in the option
+     bx_links_ia_keys, encrypted (libsodium secretbox) with a key derived from this site's secret keys in wp-config.php
+     (wp_salt), so a copy of the database alone, such as a backup, does not reveal them. If those secret keys are ever
+     changed, the stored keys can no longer be read, and the screen asks for them again. The secret key is never
+     shown on the screen after it is saved. */
+define('BX_LK_KEYS', 'bx_links_ia_keys');
+function bx_lk_box_key() {
+    return sodium_crypto_generichash('bx-links-ia-keys|' . wp_salt('secure_auth'), '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
+}
+function bx_lk_seal($plain) {
+    $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+    return base64_encode($nonce . sodium_crypto_secretbox($plain, $nonce, bx_lk_box_key()));
+}
+function bx_lk_unseal($sealed) {
+    $raw = base64_decode((string) $sealed, true);
+    $n = SODIUM_CRYPTO_SECRETBOX_NONCEBYTES;
+    if ($raw === false || strlen($raw) <= $n) { return null; }
+    try { $plain = sodium_crypto_secretbox_open(substr($raw, $n), substr($raw, 0, $n), bx_lk_box_key()); } catch (\Throwable $e) { return null; }
+    return $plain === false ? null : $plain;
+}
+/* the keys in use: array('access', 'secret', 'from' => 'config' | 'dashboard'), or null for none */
+function bx_lk_ia_keys() {
     if (defined('BX_IA_ACCESS_KEY') && defined('BX_IA_SECRET_KEY') && BX_IA_ACCESS_KEY && BX_IA_SECRET_KEY) {
-        $h['Authorization'] = 'LOW ' . BX_IA_ACCESS_KEY . ':' . BX_IA_SECRET_KEY;
+        return array('access' => (string) BX_IA_ACCESS_KEY, 'secret' => (string) BX_IA_SECRET_KEY, 'from' => 'config');
     }
+    $o = get_option(BX_LK_KEYS);
+    if (!is_array($o) || empty($o['sealed'])) { return null; }
+    $k = json_decode((string) bx_lk_unseal($o['sealed']), true);
+    return is_array($k) && !empty($k['a']) && !empty($k['s']) ? array('access' => (string) $k['a'], 'secret' => (string) $k['s'], 'from' => 'dashboard') : null;
+}
+function bx_lk_spn_headers($keys = null) {
+    $h = array('Accept' => 'application/json');
+    $k = $keys ? $keys : bx_lk_ia_keys();
+    if ($k) { $h['Authorization'] = 'LOW ' . $k['access'] . ':' . $k['secret']; }
     return $h;
 }
 /* ask Save Page Now for a capture: array(result, detail) with result
    'queued' (detail: job id), 'refused' (the Archive will not save this page; detail: why),
-   'busy' (too many requests now; try later), 'keys' (the Archive wants archive.org keys), 'error' (no usable answer) */
-function bx_lk_spn($url) {
+   'busy' (too many requests now; try later), 'keys' (the Archive wants archive.org keys), 'error' (no usable answer).
+   $keys: keys to try instead of the saved ones (the key form tests new keys before saving them). */
+function bx_lk_spn($url, $keys = null) {
     $r = wp_remote_post(apply_filters('bx_links_spn', BX_LK_SPN), array(
-        'timeout' => 30, 'user-agent' => BX_LK_UA, 'headers' => bx_lk_spn_headers(),
+        'timeout' => 30, 'user-agent' => BX_LK_UA, 'headers' => bx_lk_spn_headers($keys),
         'body' => array('url' => $url, 'skip_first_archive' => '1', 'if_not_archived_within' => '30d'),
     ));
     if (is_wp_error($r)) { return array('error', $r->get_error_message()); }
@@ -335,7 +369,7 @@ function bx_lk_work($budget) {
             elseif ($res === 'refused') { $s['spn_note'] = $detail; }
             else {
                 $s['spn_at'] = 0;   // not this link's fault: it stays first in line for the next run
-                $run['spn_stop'] = $res === 'keys' ? 'the Internet Archive asked for archive.org keys' : ($res === 'busy' ? 'the Internet Archive was busy: ' . $detail : 'no usable answer from the Internet Archive: ' . $detail);
+                $run['spn_stop'] = $res === 'keys' ? (bx_lk_ia_keys() ? 'the Internet Archive did not accept this site\'s archive.org keys' : 'the Internet Archive asked for archive.org keys') : ($res === 'busy' ? 'the Internet Archive was busy: ' . $detail : 'no usable answer from the Internet Archive: ' . $detail);
                 update_option('bx_links_run', $run, false);
             }
         }
@@ -574,6 +608,34 @@ add_action('admin_post_bx_links_settings', function () {
     bx_lk_apply(bx_lk_state());
     bx_lk_back(array('done' => 'settings'));
 });
+/* archive.org keys from the form: tested with the Archive (the home page is sent to Save Page Now) before they are
+   saved; keys the Archive refuses are not saved. A run that stopped saving pages for want of keys carries on. */
+add_action('admin_post_bx_links_keys', function () {
+    if (!current_user_can('manage_options')) { wp_die('Not allowed.'); }
+    check_admin_referer('bx_links_keys');
+    if (!empty($_POST['remove'])) {
+        delete_option(BX_LK_KEYS);
+        bx_lk_back(array('done' => 'keys_removed'));
+    }
+    $a = preg_replace('/\s+/', '', (string) wp_unslash(isset($_POST['access']) ? $_POST['access'] : ''));
+    $s = preg_replace('/\s+/', '', (string) wp_unslash(isset($_POST['secret']) ? $_POST['secret'] : ''));
+    if (!preg_match('/^[A-Za-z0-9]{8,64}$/', $a) || !preg_match('/^[A-Za-z0-9]{8,64}$/', $s) || $a === $s) { bx_lk_back(array('done' => 'keys_format')); }
+    list($res, $detail) = bx_lk_spn(home_url('/'), array('access' => $a, 'secret' => $s));
+    if ($res === 'keys') { bx_lk_back(array('done' => 'keys_rejected')); }
+    $ok = in_array($res, array('queued', 'refused'), true);   // refused: the Archive read the keys and declined the page itself
+    update_option(BX_LK_KEYS, array(
+        'sealed' => bx_lk_seal(wp_json_encode(array('a' => $a, 's' => $s))),
+        'end' => substr($a, -4), 'by' => wp_get_current_user()->user_login, 'at' => time(),
+        'test' => $ok ? 'accepted' : 'untested', 'detail' => $ok ? '' : substr((string) $detail, 0, 200),
+    ), false);
+    $run = get_option('bx_links_run');
+    if (is_array($run) && !empty($run['spn_stop']) && strpos($run['spn_stop'], 'keys') !== false) {
+        $run['spn_stop'] = '';
+        update_option('bx_links_run', $run, false);
+        wp_schedule_single_event(time(), 'bx_links_batch');
+    }
+    bx_lk_back(array('done' => $ok ? 'keys_saved' : 'keys_untested'));
+});
 add_action('admin_post_bx_links_run', function () {
     if (!current_user_can('manage_options')) { wp_die('Not allowed.'); }
     check_admin_referer('bx_links_run');
@@ -609,9 +671,17 @@ function bx_lk_screen() {
         'settings' => 'Settings saved.',
         'replaced' => 'Replaced in ' . (int) ($_GET['n'] ?? 0) . ((int) ($_GET['n'] ?? 0) === 1 ? ' place' : ' places') . ' (pages, posts, events, widgets, menus). Pages are being rebuilt; the new address is checked on the next run.',
         'badnew' => 'Not replaced: enter a full address starting with http:// or https://, different from the old one.',
+        'keys_saved' => 'Keys saved. The Internet Archive accepted them (as the test, it was asked to save the home page). Pages waiting to be saved are sent in the background now.',
+        'keys_untested' => 'Keys saved, but the Internet Archive could not be reached to test them just now. They are tried on the next run; this page shows the result.',
+        'keys_rejected' => 'Not saved: the Internet Archive did not accept these keys. Copy both again from https://archive.org/account/s3.php (the access key and the secret key are two different codes).',
+        'keys_format' => 'Not saved: each key is one run of letters and digits, and the two keys are different. Check that both boxes are filled and nothing else was copied with them.',
+        'keys_removed' => 'Keys removed. Pages are no longer sent to the Internet Archive to be saved; everything else works as before.',
     );
+    $errors = array('badnew', 'keys_rejected', 'keys_format');
     $done = isset($_GET['done']) ? (string) $_GET['done'] : '';
-    $spn_mode = isset(bx_lk_spn_headers()['Authorization']) ? 'with this site\'s archive.org keys' : 'anonymously (no archive.org keys in wp-config.php, so the Archive\'s lower limits apply)';
+    $keys = bx_lk_ia_keys();
+    $kopt = get_option(BX_LK_KEYS);
+    $spn_mode = $keys ? 'with archive.org keys' : 'without archive.org keys, which the Internet Archive requires (see "Internet Archive keys" above)';
     $live = array_filter($state, function ($s) { return in_array($s['status'], array('ok', 'blocked'), true); });
     $never = array_filter($live, function ($s) { return $s['cap'] === ''; });
     $asked = array_filter($never, function ($s) { return $s['spn'] !== ''; });
@@ -620,7 +690,7 @@ function bx_lk_screen() {
     ?>
     <div class="wrap">
       <h1>Link check</h1>
-      <?php if (isset($notes[$done])) { echo '<div class="notice ' . ($done === 'badnew' ? 'notice-error' : 'notice-success') . '"><p>' . esc_html($notes[$done]) . '</p></div>'; } ?>
+      <?php if (isset($notes[$done])) { echo '<div class="notice ' . (in_array($done, $errors, true) ? 'notice-error' : 'notice-success') . '"><p>' . esc_html($notes[$done]) . '</p></div>'; } ?>
       <p>Every link from this site to another site is checked once a week. A link that fails <?php echo (int) BX_LK_FAILS; ?> weekly checks in a row counts as dead.
       The Internet Archive's copy, when used, is swapped in as each page is built (pages and events are not edited, and a site that comes back gets its own link back after one good check); a new address is written into the pages and events themselves.</p>
 
@@ -632,6 +702,43 @@ function bx_lk_screen() {
         <label style="display: block; margin: 10px 0 4px;">Send warnings to: <input type="email" name="email" value="<?php echo esc_attr($set['email']); ?>" class="regular-text"></label>
         <?php submit_button('Save settings', 'primary', 'submit', false); ?>
       </form>
+
+      <div style="background: #fff; border: 1px solid #c3c4c7; padding: 4px 16px 12px; max-width: 760px; margin-top: 16px;">
+        <h2 style="margin-bottom: 6px;">Internet Archive keys (optional)</h2>
+        <p>When a working link has never been saved by the Internet Archive, this site asks the Archive to save it, so that a copy exists if the page disappears later. The Archive takes these requests only with the keys of an archive.org account. Without keys, everything else still works: dead links are found, you are warned, and the Archive's existing copies are offered.</p>
+        <?php
+        if ($keys && $keys['from'] === 'config') {
+            echo '<p><strong>Keys are set in wp-config.php</strong> (access key ending in ' . esc_html(substr($keys['access'], -4)) . '). They are used instead of this form. To manage the keys here, someone with access to the server removes the two BX_IA_ lines from wp-config.php.</p>';
+        } else {
+            if ($keys) {
+                echo '<p><strong>Keys saved</strong> ' . esc_html($when($kopt['at'] ?? 0)) . ' by ' . esc_html($kopt['by'] ?? '?') . ' (access key ending in ' . esc_html(substr($keys['access'], -4)) . '). '
+                   . (($kopt['test'] ?? '') === 'accepted' ? 'The Internet Archive accepted them when they were saved.' : 'They could not be tested when they were saved' . (!empty($kopt['detail']) ? ' (' . esc_html($kopt['detail']) . ')' : '') . '.') . '</p>';
+            } elseif (is_array($kopt) && !empty($kopt['sealed'])) {
+                echo '<p><strong>Keys were saved ' . esc_html($when($kopt['at'] ?? 0)) . ' but can no longer be read</strong>, because this site\'s own secret keys in wp-config.php have changed since. Enter them again below.</p>';
+            } else {
+                echo '<p><strong>No keys saved.</strong></p>';
+            }
+            ?>
+            <ol style="margin-left: 1.6em;">
+              <li>Sign in at <a href="https://archive.org/account/login" target="_blank" rel="noopener">archive.org</a> with an account the committee keeps, for example one under the committee's shared email, so that whoever looks after the site later can sign in to it too (a new account is free: <a href="https://archive.org/account/signup" target="_blank" rel="noopener">sign up</a>).</li>
+              <li>Open <a href="https://archive.org/account/s3.php" target="_blank" rel="noopener">archive.org/account/s3.php</a>. It shows two codes: an access key and a secret key.</li>
+              <li>Copy each one into its box below and click <strong><?php echo $keys ? 'Replace keys' : 'Save keys'; ?></strong>. The site tries them with the Archive straight away and tells you whether they work.</li>
+            </ol>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" autocomplete="off">
+              <input type="hidden" name="action" value="bx_links_keys"><?php wp_nonce_field('bx_links_keys'); ?>
+              <label style="display: block; margin: 6px 0;">Access key: <input type="text" name="access" class="regular-text" autocomplete="off" spellcheck="false" required></label>
+              <label style="display: block; margin: 6px 0;">Secret key: <input type="password" name="secret" class="regular-text" autocomplete="new-password" spellcheck="false" required></label>
+              <?php submit_button($keys ? 'Replace keys' : 'Save keys', 'primary', 'submit', false); ?>
+            </form>
+            <?php if (is_array($kopt) && !empty($kopt['sealed'])) { ?>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-top: 8px;" onsubmit="return confirm('Remove the archive.org keys? Pages will no longer be sent to the Internet Archive to be saved.');">
+              <input type="hidden" name="action" value="bx_links_keys"><input type="hidden" name="remove" value="1"><?php wp_nonce_field('bx_links_keys'); ?>
+              <?php submit_button('Remove keys', 'small', 'submit', false); ?>
+            </form>
+            <?php } ?>
+            <p class="description">The keys are stored encrypted, and the secret key is never shown again after it is saved. Only administrators can see this form.</p>
+        <?php } ?>
+      </div>
 
       <p style="margin-top: 16px;">
         <?php echo count($state); ?> outside links.

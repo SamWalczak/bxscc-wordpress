@@ -51,7 +51,13 @@ A dead link can only get a copy the Archive already has. So every working link i
 
 If the Archive says it is busy, or asks for keys, the plugin stops sending pages for that run and tries again the next week; the report says so.
 
-**archive.org keys (optional).** Without keys the requests go in anonymously, with the Archive's lower limits (fewer captures a day and at once). With a free archive.org account, its keys (https://archive.org/account/s3.php) raise them. They go in `wp-config.php`, not the database:
+**archive.org keys.** Save Page Now accepts this site's requests only with the keys of an archive.org account (tested October 2026: without keys it answers HTTP 401). Without keys, pages are not sent and everything else works: checks, warnings, and the Archive's existing copies. A free account is enough; use one the committee keeps (for example under its shared email) so a successor can sign in to it.
+
+Entering them, no terminal needed: **Tools > Link check > Internet Archive keys**. The screen says where to find the two codes (https://archive.org/account/s3.php). On **Save keys** the site first sends the home page to Save Page Now with the new keys: keys the Archive refuses are not saved; if the Archive cannot be reached, they are saved and marked untested. If the last run stopped saving pages for want of keys, it carries on in the background right away. **Remove keys** deletes them.
+
+How they are kept: in the option `bx_links_ia_keys` (not autoloaded), encrypted with libsodium's secretbox under a key derived from the site's own secret keys in `wp-config.php` (`wp_salt('secure_auth')`), so the database alone, such as a backup, does not reveal them. The secret key is never shown again after saving; the screen shows only the last four characters of the access key, who saved them and when. Only administrators (`manage_options`) reach the screen. If the site's secret keys in `wp-config.php` are ever changed (some security tools do this to sign everyone out), the stored keys can no longer be read; the screen says so and asks for them again.
+
+Alternatively, with server access, the keys can go in `wp-config.php`, where they take priority over the screen (which then shows that they are set there and offers no form):
 
 ```
 define('BX_IA_ACCESS_KEY', '...');
