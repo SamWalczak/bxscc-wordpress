@@ -733,8 +733,14 @@ if (defined('WP_CLI') && WP_CLI) {
         public function run($args, $assoc) {
             bx_lk_start();
             $q = get_option(BX_LK_QUEUE);
-            WP_CLI::log((is_array($q) ? count($q) : 0) . ' links to check, then the Internet Archive lookups.');
-            while (($left = bx_lk_work(30)) > 0) { WP_CLI::log($left . ' steps to go.'); }
+            $total = is_array($q) ? count($q) : 0;
+            WP_CLI::log($total . ' links to check, then the Internet Archive lookups.');
+            while (($left = bx_lk_work(30)) > 0) {
+                // each working link adds an Archive lookup, so the two counts are shown apart
+                $q = get_option(BX_LK_QUEUE);
+                $q = is_array($q) ? count($q) : 0;
+                WP_CLI::log(sprintf('%d of %d links checked; %d Internet Archive steps to go.', $total - $q, $total, $left - $q));
+            }
             $state = bx_lk_state();
             $count = array();
             foreach ($state as $s) { $count[$s['status']] = ($count[$s['status']] ?? 0) + 1; }
