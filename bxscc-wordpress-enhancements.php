@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.71
+ * Version: 1.72
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -868,6 +868,31 @@ function bx_slide_originals_script() {
 </script>
 HTML;
 }
+
+/* 3j. Reflections with a photo (Youth Ambassadors year pages, components.css): from 600px wide the quote's rule runs at
+       least the photo's height and a shorter quote is centered on the photo. Stylesheets cannot size one column by a
+       photo in the other while the caption stays under the photo, so the photo's drawn height (which changes with the
+       column width) is measured here and handed over as --bx-photo-h. Without the script the quote starts level with
+       the photo's top. Printed only on pages whose content has such a reflection. */
+add_action('wp_footer', function () {
+    $post = is_singular() ? get_queried_object() : null;
+    if (!($post instanceof WP_Post) || strpos($post->post_content, 'bx-reflection') === false || stripos($post->post_content, '<figure') === false) { return; }
+?>
+<script>
+(function () {
+  var photos = [];
+  document.querySelectorAll(".bx-reflection > figure img").forEach(function (im) { photos.push(im); });
+  function hand(im, h) { im.closest(".bx-reflection").style.setProperty("--bx-photo-h", h + "px"); }
+  photos.forEach(function (im) { hand(im, im.getBoundingClientRect().height); });   // now, before the first paint
+  if (!photos.length || !("ResizeObserver" in window)) { return; }
+  var ro = new ResizeObserver(function (entries) {   // a photo's box changed size (window resized, phone turned)
+    entries.forEach(function (e) { hand(e.target, e.contentRect.height); });
+  });
+  photos.forEach(function (im) { ro.observe(im); });
+})();
+</script>
+<?php
+}, 20);
 
 /* 4. XML-RPC is unused on this site; turning it off removes a login brute-force surface. That setting only covers
       the methods that need a login, so the pingback methods are removed too (pings are closed on every post, so

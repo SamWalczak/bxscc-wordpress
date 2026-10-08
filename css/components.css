@@ -183,6 +183,11 @@ p + .bx-section { margin-top: 24px; }   /* a section after ordinary text (Profil
 .bx-reflection figcaption a { margin-top: 4px; font-size: 0.9em; font-weight: 600; }
 .bx-reflection blockquote.bx-quote { flex: 1; min-width: 0; }
 .bx-reflection:nth-child(even) blockquote.bx-quote { padding: 0 18px 0 0; border-left: 0; border-right: 3px solid var(--bx-navy); }
+/* beside a photo: the rule runs at least the photo's height and a shorter quote is centered on it (--bx-photo-h comes
+   from the plugin's script, block 3j; a longer quote keeps its own length, the photo staying at the top) */
+@media (min-width: 600px) {
+  .bx-reflection:has(> figure) blockquote.bx-quote { min-height: var(--bx-photo-h, 0px); display: flex; flex-direction: column; justify-content: center; }
+}
 /* without a photo (2019 page): the title and years of study above the quote, every quote's rule on the left
    (on phones, above every quote, from the rule below) */
 .bx-reflection-who { margin: 0 0 10px; line-height: 1.5; }
