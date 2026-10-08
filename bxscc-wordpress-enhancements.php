@@ -2,16 +2,15 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.64
+ * Version: 1.65
  */
 if (!defined('ABSPATH')) { exit; }
 
 /* 1. Apply a saved dark-mode preference before first paint (no light flash). Also marks the page html.bx-js, so styles
-      that need the scripts (photos fading in, block 15) only apply when scripts run, and defines bxIn(), which shows such
-      a photo: with a fade if the page had already been drawn without it, at once if not (a photo already downloaded). */
+      that need the scripts (photos shown only once they have arrived, block 15) only apply when scripts run. */
 add_action('wp_head', function () {
 ?>
-<script>(function(){document.documentElement.classList.add("bx-js");window.bxIn=function(im){var p=performance.getEntriesByType?performance.getEntriesByType("paint"):[];if(!p.length){im.style.transition="none";}im.classList.add("bx-in");};try{if(localStorage.getItem("bx-theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");}}catch(e){}})();</script>
+<script>(function(){document.documentElement.classList.add("bx-js");try{if(localStorage.getItem("bx-theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");}}catch(e){}})();</script>
 <?php
 }, 1);
 
@@ -41,11 +40,14 @@ add_action('wp_head', function () {
 .bx-lightbox.is-loading figure::before { content: ""; position: absolute; left: 50%; top: calc(50% - 20px); width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: bx-lb-spin 0.9s linear infinite; }
 @keyframes bx-lb-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bx-lightbox.is-loading figure::before { animation-duration: 2.4s; } }
-/* photos in page content appear whole, with a short fade, instead of being drawn from the top down as they download
-   (block 15 marks them; without scripts they show as usual) */
-html.bx-js img.bx-fade:not(.bx-in) { opacity: 0; }
-img.bx-fade { transition: opacity 0.25s ease-out; }
-@media (prefers-reduced-motion: reduce) { img.bx-fade { transition: none; } }
+/* photos in page content appear whole instead of being drawn from the top down as they download (block 15 marks them;
+   without scripts they show as usual): until a photo has arrived, its pixels are kept out of its box, and if that takes
+   more than 0.3 seconds the box shows the banner's loading look, navy with a small gold spinner (an animated SVG, as an
+   image cannot hold the banner's ::after spinner). The photo replaces it the moment it is complete. */
+html.bx-js img.bx-fade:not(.bx-in) { object-position: -99999px 0; animation: bx-photo-wait 0.01s linear 0.3s forwards; }
+@keyframes bx-photo-wait { to { background: var(--bx-navy, #17203a) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18.5' fill='none' stroke='rgba(254,204,74,0.25)' stroke-width='3'/%3E%3Cpath d='M20 1.5a18.5 18.5 0 0 1 18.5 18.5' fill='none' stroke='%23fecc4a' stroke-width='3'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 20 20' to='360 20 20' dur='0.9s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E") center / min(40px, 45%) no-repeat; } }
+@keyframes bx-photo-wait-slow { to { background: var(--bx-navy, #17203a) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18.5' fill='none' stroke='rgba(254,204,74,0.25)' stroke-width='3'/%3E%3Cpath d='M20 1.5a18.5 18.5 0 0 1 18.5 18.5' fill='none' stroke='%23fecc4a' stroke-width='3'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 20 20' to='360 20 20' dur='2.4s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E") center / min(40px, 45%) no-repeat; } }
+@media (prefers-reduced-motion: reduce) { html.bx-js img.bx-fade:not(.bx-in) { animation-name: bx-photo-wait-slow; } }
 /* arrows pinned to the window edges, outside the photo box, in the same place for every photo */
 .bx-lb-nav { position: fixed; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,0.15); font-size: 0; cursor: pointer; z-index: 10000; display: flex; align-items: center; justify-content: center; }
 /* chevrons drawn with borders, so they are centered geometrically rather than by a font's baseline */
@@ -1079,12 +1081,13 @@ add_filter('wp_content_img_tag', function ($img, $context, $id) {
     return preg_replace('/^<img /', '<img srcset="' . esc_attr($set) . '" sizes="' . esc_attr($sizes) . '" ', $img);
 }, 10, 3);
 /* Every photo in page content, events and widgets: browsers draw a photo from the top down as it downloads, which
-   looked unfinished; marked here, it stays transparent until it has arrived whole, then fades in (styles in block 2).
-   The handlers are on the tag itself, so they are in place however early the photo arrives. */
+   looked unfinished; marked here, it shows only once it has arrived whole, with the banner's loading box meanwhile if
+   that takes a moment (styles in block 2). The handlers are on the tag itself, so they are in place however early the
+   photo arrives. */
 add_filter('wp_content_img_tag', function ($img) {
     if (strpos($img, ' onload=') !== false || strpos($img, 'bx-fade') !== false) { return $img; }
     $img = preg_match('/\sclass="/', $img) ? preg_replace('/\sclass="/', ' class="bx-fade ', $img, 1) : preg_replace('/^<img /', '<img class="bx-fade" ', $img);
-    return preg_replace('/^<img /', '<img onload="window.bxIn?bxIn(this):this.classList.add(\'bx-in\')" onerror="this.classList.add(\'bx-in\')" ', $img);
+    return preg_replace('/^<img /', '<img onload="this.classList.add(\'bx-in\')" onerror="this.classList.add(\'bx-in\')" ', $img);
 }, 20);
 
 /* 16. The News Magazine theme (Web-Dorado, version 1.1.12) was closed on WordPress.org in 2019 and will get no more

@@ -41,7 +41,9 @@ Photos from other sites, and photos that are not in the Media Library, are left 
 
 ## Photos appear whole
 
-Browsers draw a photo from the top down as its bytes arrive, which looked unfinished. Every photo in page content, events and sidebar widgets (block 15 marks them `bx-fade`) stays transparent until it has arrived whole, then appears: with a quarter-second fade if the page had already been drawn without it, at once if it was ready before the page's first paint (a photo already in the browser's cache). Its space is reserved from the start, so nothing moves. Without scripts, photos show as they always did (the rule applies only under `html.bx-js`, set by the first script in `<head>`). Visitors who ask for less motion get no fade.
+Browsers draw a photo from the top down as its bytes arrive, which looked unfinished. Every photo in page content, events and sidebar widgets (block 15 marks them `bx-fade`) is kept out of sight until it has arrived whole, then appears at once. If it is still downloading after 0.3 seconds, its space shows the banner's loading look: a navy box with a small gold spinner, the same size as the photo. A photo already in the browser's cache, or one that arrives within 0.3 seconds, never shows the box. Its space is reserved from the start, so nothing moves, and once loaded the page looks exactly as before. Without scripts, photos show as they always did (the rule applies only under `html.bx-js`, set by the first script in `<head>`). The spinner turns slowly for visitors who ask their system for reduced motion.
+
+How it works: the photo's pixels are moved out of its box (`object-position`) while the box keeps its size, and a CSS animation that starts after 0.3 seconds gives the box the navy background and the spinner. The spinner is an animated SVG drawn as the box's background, because a photo cannot hold the `::after` element the banner's spinner uses. The photo's `onload` adds `bx-in`, which removes both.
 
 ## Lightbox
 
