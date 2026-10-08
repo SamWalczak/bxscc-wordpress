@@ -2,8 +2,9 @@
 /*
  * Youth Ambassadors Program page (/youth-ambassadors-program/, page 917): new layout, October 2026.
  * - Program Information: the six questions as one section heading and table, each question a row title with its
- *   answer under it; the donation form stays under the cost answer. "When" now reads "The last trip was July 14-31,
- *   2026."; "Where" reads "In 2026 we traveled to Xiamen, Anhui and Beijing." (the Fuzhou stop was dropped on June 20).
+ *   answer under it; the donation button stays under the cost answer, centered in the cell. "When" now reads "The
+ *   last trip was July 14-31, 2026."; "Where" reads "In 2026 we traveled to Xiamen, Anhui and Beijing." (the Fuzhou
+ *   stop was dropped on June 20).
  * - Key Staff for the 2026 Program (was 2025): a section heading with a table, one row per person by surname. Hosea
  *   Chew added; entries updated for what each person did in 2026 (Jeannette's and Justin's as they were).
  * - Media Coverage of Past Trips: one table by trip, newest first; each item dated (the date links to it too) and
@@ -12,6 +13,7 @@
  * - Reflections from Past Program Participants: the 2019 page's format; quotes verbatim (the Word markup removed).
  * - Thanks: a section heading with the text in a table, wording unchanged.
  * - The "- - -" lines removed; the photos and Profiles of Past Programs (the year list) unchanged.
+ * Works on the page as it was or on the version approved at 17:23 on Oct 8 (donation button not yet centered).
  * Needs plugin 1.75 or later.
  * From public_html:
  *   wp eval-file ~/ya-program.php dry --use-include --skip-themes --skip-plugins   (checks the page; changes nothing)
@@ -85,7 +87,7 @@ $new = str_replace('https://bxscc.org', $site, <<<'HTML'
 <tr>
 <td colspan="2">
 <p>The value of the program is over $7,000 per participant, inclusive of all transportation, lodgings, meals, and group activities. Actual program costs will vary from year to year*, pending fundraising levels. As a nonprofit organization, the BXSCC will do our best to make the program affordable through fundraising and grants. Leftover funds after the program has completed are refunded to the Youth Ambassadors. If you are interested in donating to this program, please follow the link below; specify the BXSCC and its Youth Ambassadors Program as the beneficiary.</p>
-<form style="padding: 0; margin: 0;" action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top"><input name="cmd" type="hidden" value="_s-xclick" />
+<form style="padding: 0; margin: 0; text-align: center;" action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top"><input name="cmd" type="hidden" value="_s-xclick" />
 <input name="hosted_button_id" type="hidden" value="4SH5RSPZMFMGY" /><input style="padding: 0; margin: 0;" alt="PayPal - The safer, easier way to pay online!" name="submit" src="https://baltimoresistercities.org/wp-content/uploads/2018/02/donate-2.png" type="image" /><img class="aligncenter" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" alt="" width="1" height="1" border="0" /><em> </em></form>
 </td>
 </tr>
@@ -333,10 +335,11 @@ HTML
 $c = $page->post_content;
 if ($c === $new) { WP_CLI::success('Nothing to do: the page already has the new layout.'); return; }
 $was = md5(str_replace($site, 'https://bxscc.org', $c));
-if ($was !== '0c3c0abc44a9dd5e350c194d89c48daa') {
+$known = array('0c3c0abc44a9dd5e350c194d89c48daa' => 'the original', 'b35a9fb4860eb5e693f30322ad18ca3d' => 'the version approved at 17:23');
+if (!isset($known[$was])) {
     WP_CLI::error("The page is not the version this was written against (fingerprint $was), so nothing was done. Paste this output; the page's content is needed to redo the change.");
 }
-WP_CLI::log("Page {$page->ID}: found the expected version (" . strlen($c) . ' characters); the new one has ' . strlen($new) . '.');
+WP_CLI::log("Page {$page->ID}: found {$known[$was]} (" . strlen($c) . ' characters); the new one has ' . strlen($new) . '.');
 if ($mode !== 'run') { WP_CLI::success('Dry run: nothing changed. Run again with "run" to make the change.'); return; }
 
 $r = wp_update_post(wp_slash(array('ID' => $page->ID, 'post_content' => $new)), true);
