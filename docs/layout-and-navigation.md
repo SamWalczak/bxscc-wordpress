@@ -20,11 +20,20 @@ In the phone menu, tapping a parent item such as "About Us" only opens its dropd
 
 The theme injects its own copy of the parent link late, for some parents only; when it appears, the plugin relabels it instead of adding a second one, so there is never a duplicate. It reacts to the menu's changes as they happen, whatever event the theme used to open it. The labels are set in the `labels` object at the top of block 3e.
 
-## Previous / all / next bar on yearly pages
+## Pages by year: lists by decade, previous / all / next bar
 
-At the bottom of each yearly News and Events post, a bar links to the previous year, to News and Events, and to the next year. A year with no page on one side gets an empty segment, so the middle link stays centered. The bar is styled as three connected segments (`.bx-year-nav` in `components.css`).
+Two sets of pages have one page per year, and both work the same way: a list of the years, one row per decade with the newest decade first (`bx_year_decades`, styled by `.bx-years` in `components.css`; the decade labels are hidden below 700px wide), and at the bottom of each year's page a bar with the previous year, a link to the list, and the next year. A year with nothing on one side gets an empty segment, so the middle link stays centered. The bar is three connected segments (`bx_year_bar`, `.bx-year-nav` in `components.css`).
 
-A post counts as a yearly page when its title reads "News and Events" or "News and Media" followed by a four-digit year.
+| | News and Events | Youth Ambassadors Program |
+|---|---|---|
+| A year's page | a post whose title reads "News and Events" or "News and Media" followed by a four-digit year (the list uses the slug `news-and-media-YYYY`) | a published page with the slug `YYYY-bxscc-youth-ambassadors-program` (any parent; today they are under News and Events) |
+| The list | `[bx_years]` under "Archives by Year" on News and Events | `[bx_ya_years]` under "Profiles of Past Programs" on the program page |
+| The bar's sides | the year just before and just after | the nearest program year before and after (2019 links to 2024: there were no programs from 2020 to 2023) |
+| The middle link | All News and Events, to News and Events | All Program Years, to the list on the program page (`/youth-ambassadors-program/#past-programs`; the heading carries `id="past-programs"`) |
+
+**A new program year** needs only its page: publish it with the slug `YYYY-bxscc-youth-ambassadors-program` and it appears in the list and in its neighbors' bars. Publishing, unpublishing, trashing or renaming such a page empties every cached page (block 9; Nginx Helper alone would empty only the page that was saved).
+
+The program page's list replaced four hand-written links with version 1.66 (`tools/ya-years.php`, run once on the live site; it checks that the list will show exactly the years that were linked).
 
 ## Menu bar on one row
 

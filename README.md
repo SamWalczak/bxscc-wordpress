@@ -14,7 +14,7 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Video previews** | YouTube videos show a thumbnail and load the player (privacy-enhanced mode) only when clicked. | [docs/video-previews.md](docs/video-previews.md) |
 | **Header and footer** | Two-line site title, correct social-icon labels (including a Discord icon), current copyright year with a bilingual line. | [docs/header-and-footer.md](docs/header-and-footer.md) |
 | **Dark mode** | A moon button in the header switches the site to dark colors; the choice is remembered on that device without cookies, with no flash of light colors. | [docs/dark-mode.md](docs/dark-mode.md) |
-| **Layout and navigation** | Sidebar and content end level, parent-page links in the phone menu, previous / all / next bar on yearly pages, home page tab title, a not-found page in the site's layout. | [docs/layout-and-navigation.md](docs/layout-and-navigation.md) |
+| **Layout and navigation** | Sidebar and content end level, parent-page links in the phone menu, year lists by decade and a previous / all / next bar on yearly pages (News and Events, Youth Ambassadors Program), home page tab title, a not-found page in the site's layout. | [docs/layout-and-navigation.md](docs/layout-and-navigation.md) |
 | **Page markup** | The table, grid and button-bar patterns page content uses, and the CSS classes that style them. | [docs/page-markup.md](docs/page-markup.md) |
 | **Fonts** | Self-hosted Open Sans (no Google Fonts requests), with fallback metrics so text does not jump. | [docs/fonts.md](docs/fonts.md) |
 | **News Magazine theme** | The theme has had no updates since 2019. Its unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off, and its layout widths are kept valid; four small theme-file edits are in `tools/news-magazine/`. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
@@ -50,6 +50,7 @@ links/links.php                   the weekly dead-link check, warnings, the arch
 fonts/                            Open Sans woff2 files and their license (SIL OFL 1.1)
 docs/                             feature documentation
 tools/migration/                  one-time scripts used to move the old hand-written event pages into the events table
+tools/ya-years.php                one-time script that put the year list on the Youth Ambassadors Program page
 tools/news-magazine/              the patch applied to the News Magazine theme's own files (not part of the plugin)
 ```
 

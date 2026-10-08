@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.65
+ * Version: 1.66
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -916,7 +916,41 @@ add_filter('document_title_parts', function ($parts) {
     return $parts;
 });
 
-/* 9. News and Media yearly posts: previous year, all news, next year, at the bottom of the post. */
+/* 9. Pages by year. Two sets of yearly pages share one look:
+      - News and Events: one post per year ("News and Events YYYY"); the list of years is [bx_years] (events/events.php).
+      - Youth Ambassadors Program: one page per program year, slug YYYY-bxscc-youth-ambassadors-program (BX_YA_SLUG);
+        the list of years is [bx_ya_years], placed on the program page under its "Profiles of Past Programs" heading.
+      Each list shows one row per decade, newest decade first (bx_year_decades). Each yearly page ends with a bar:
+      previous year, all years, next year (bx_year_bar; .bx-year-nav in components.css). The News and Events bar
+      links the years either side; the Youth Ambassadors bar links the nearest program years either side, since
+      there were no programs from 2020 to 2023. */
+define('BX_YA_SLUG', '/^(\d{4})-bxscc-youth-ambassadors-program$/');
+
+/* $byYear: year => address. One <p> per decade: the decade's label, then its years oldest first. */
+function bx_year_decades($byYear) {
+    if (!$byYear) { return ''; }
+    ksort($byYear);
+    $decades = array();
+    foreach ($byYear as $y => $url) { $decades[intdiv($y, 10) * 10][$y] = $url; }
+    krsort($decades);
+    $h = "<div class=\"bx-years\">\n";
+    foreach ($decades as $d => $years) {
+        $links = array();
+        foreach ($years as $y => $url) { $links[] = '<a href="' . esc_url($url) . '">' . $y . '</a>'; }
+        $h .= '<p><span class="bx-decade">' . $d . 's</span><span class="bx-yrs">' . implode(' <span aria-hidden="true">·</span> ', $links) . "</span></p>\n";
+    }
+    return $h . "</div>\n";
+}
+
+/* $prev and $next: array(year, address), or null for an empty segment (keeps the middle link centered). */
+function bx_year_bar($label, $prev, $all_url, $all_text, $next) {
+    $nav = '<nav class="bx-year-nav" aria-label="' . esc_attr($label) . '">';
+    $nav .= $prev ? '<a class="bx-prev" href="' . esc_url($prev[1]) . '">&larr; ' . (int) $prev[0] . '</a>' : '<span></span>';
+    $nav .= '<a class="bx-all" href="' . esc_url($all_url) . '">' . esc_html($all_text) . '</a>';
+    $nav .= $next ? '<a class="bx-next" href="' . esc_url($next[1]) . '">' . (int) $next[0] . ' &rarr;</a>' : '<span></span>';
+    return $nav . '</nav>';
+}
+
 add_filter('the_content', function ($content) {
     if (!is_singular('post') || !in_the_loop() || !is_main_query()) { return $content; }
     $title = wp_strip_all_tags(get_the_title());
@@ -928,13 +962,51 @@ add_filter('the_content', function ($content) {
             $byYear[(int) $pm[3]] = get_permalink($p);
         }
     }
-    $nav = '<nav class="bx-year-nav" aria-label="News and Events by year">';
-    $nav .= isset($byYear[$year - 1]) ? '<a class="bx-prev" href="' . esc_url($byYear[$year - 1]) . '">&larr; ' . ($year - 1) . '</a>' : '<span></span>';
-    $nav .= '<a class="bx-all" href="' . esc_url(home_url('/news-and-events/')) . '">All News and Events</a>';
-    $nav .= isset($byYear[$year + 1]) ? '<a class="bx-next" href="' . esc_url($byYear[$year + 1]) . '">' . ($year + 1) . ' &rarr;</a>' : '<span></span>';
-    $nav .= '</nav>';
-    return $content . $nav;
+    return $content . bx_year_bar('News and Events by year',
+        isset($byYear[$year - 1]) ? array($year - 1, $byYear[$year - 1]) : null,
+        home_url('/news-and-events/'), 'All News and Events',
+        isset($byYear[$year + 1]) ? array($year + 1, $byYear[$year + 1]) : null);
 }, 20);
+
+/* Youth Ambassadors program years: year => address of each published page whose slug is YYYY-bxscc-youth-ambassadors-program. */
+function bx_ya_years() {
+    static $byYear = null;
+    if ($byYear === null) {
+        $byYear = array();
+        foreach (get_posts(array('post_type' => 'page', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false, 'update_post_term_cache' => false)) as $p) {
+            if (preg_match(BX_YA_SLUG, $p->post_name, $m)) { $byYear[(int) $m[1]] = get_permalink($p); }
+        }
+        ksort($byYear);
+    }
+    return $byYear;
+}
+
+add_shortcode('bx_ya_years', function () { return bx_year_decades(bx_ya_years()); });
+
+add_filter('the_content', function ($content) {
+    if (!is_singular('page') || !in_the_loop() || !is_main_query()) { return $content; }
+    $post = get_post();
+    if (!$post || !preg_match(BX_YA_SLUG, $post->post_name, $m)) { return $content; }
+    $year = (int) $m[1];
+    $prev = $next = null;
+    foreach (bx_ya_years() as $y => $url) {
+        if ($y < $year) { $prev = array($y, $url); }
+        elseif ($y > $year && !$next) { $next = array($y, $url); }
+    }
+    $hub = get_page_by_path('youth-ambassadors-program');
+    $all = ($hub ? get_permalink($hub) : home_url('/youth-ambassadors-program/')) . '#past-programs';
+    return $content . bx_year_bar('Youth Ambassadors Program by year', $prev, $all, 'All Program Years', $next);
+}, 20);
+
+/* A program year published, unpublished or renamed changes the list on the program page and the bars on its
+   neighbors, none of which Nginx Helper empties (it empties the page that was saved): empty every page. */
+add_action('transition_post_status', function ($new, $old, $post) {
+    if ($new !== $old && ($new === 'publish' || $old === 'publish') && $post->post_type === 'page' && preg_match(BX_YA_SLUG, $post->post_name)) { bx_purge_all_pages_soon(); }
+}, 10, 3);
+add_action('post_updated', function ($id, $after, $before) {
+    if ($after->post_type === 'page' && $after->post_name !== $before->post_name && ($after->post_status === 'publish' || $before->post_status === 'publish')
+        && (preg_match(BX_YA_SLUG, $after->post_name) || preg_match(BX_YA_SLUG, $before->post_name))) { bx_purge_all_pages_soon(); }
+}, 10, 3);
 
 /* 10. YouTube previews: <div class="bx-video" data-yt="VIDEO_ID" data-start="SECONDS"></div> shows the video's thumbnail
        with a play button, and loads the real player (privacy-enhanced youtube-nocookie.com) only when clicked. */

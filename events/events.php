@@ -368,24 +368,14 @@ add_shortcode('bx_year', function ($atts) {
     return bx_ev_render(bx_ev_year_events((int) $a['year']), 'No events are listed for this year yet.');
 });
 
-/* [bx_years]  "Archives by Year": links to every yearly page, grouped by decade, newest decade first */
+/* [bx_years]  "Archives by Year": links to every yearly page, grouped by decade, newest decade first (markup from
+   bx_year_decades in the main plugin file, block 9, shared with the Youth Ambassadors list [bx_ya_years]) */
 add_shortcode('bx_years', function () {
     $byYear = array();
     foreach (get_posts(array('post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'update_post_meta_cache' => false)) as $p) {
         if (preg_match('/^news-and-media-(\d{4})$/', $p->post_name, $m)) { $byYear[(int) $m[1]] = get_permalink($p); }
     }
-    if (!$byYear) { return ''; }
-    ksort($byYear);
-    $decades = array();
-    foreach ($byYear as $y => $url) { $decades[intdiv($y, 10) * 10][$y] = $url; }
-    krsort($decades);
-    $h = "<div class=\"bx-years\">\n";
-    foreach ($decades as $d => $years) {
-        $links = array();
-        foreach ($years as $y => $url) { $links[] = '<a href="' . esc_url($url) . '">' . $y . '</a>'; }
-        $h .= '<p><span class="bx-decade">' . $d . 's</span><span class="bx-yrs">' . implode(' <span aria-hidden="true">·</span> ', $links) . "</span></p>\n";
-    }
-    return $h . "</div>\n";
+    return bx_year_decades($byYear);
 });
 
 if (is_admin()) { require_once __DIR__ . '/admin.php'; }
