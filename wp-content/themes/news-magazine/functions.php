@@ -275,7 +275,7 @@ function wdwt_setup_elements()
   register_nav_menu('primary-menu', 'Primary Menu');
 
   // for editor styles
-  add_editor_style();
+  add_theme_support( 'editor-styles' ); add_editor_style();
 
   if (!isset($content_width)) {
     $content_width = 1024;

@@ -722,6 +722,7 @@ class news_magazine_front extends WDWT_front
     $image_title = explode('||wd||', $image_title);
     $image_textarea = explode('||wd||', $image_textarea);
     $imgs_number = count($imgs_url);
+    $imgs_number = (array) $imgs_number;
     /*clear from spaces etc */
 
     foreach ($imgs_url as $i => $url) {

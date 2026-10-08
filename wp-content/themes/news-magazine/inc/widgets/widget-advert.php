@@ -51,6 +51,7 @@ echo $after_widget;
 			$title = esc_html($instance['title']);
 			
 			$bannerPath=json_decode ($instance['bannerPath'],true);
+			$bannerPath = (array) $bannerPath;
 			$bannerUrl=json_decode ($instance['bannerUrl'],true);
 			$bannerTitle=json_decode ($instance['bannerTitle'],true);
 			$bannerAlt=json_decode ($instance['bannerAlt'],true);
