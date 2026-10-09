@@ -8,6 +8,10 @@ When the sidebar is beside the content (screens wider than 1024px), if the conte
 
 Related CSS in `theme-fixes.css`: in the side-by-side layout the sidebar is one window tall with its badge at the bottom (also limited to wider than 1024px since 1.51), and on tablets and phones the content is placed above the sidebar in CSS, so the theme's script that used to move it has nothing to do.
 
+## Sidebar donate button
+
+The PayPal button in the sidebar widget (`custom_html-2`) gets the same room as the one on the Youth Ambassadors Program page (1.77): 22px between the text and the button, the picture centered as a block with PayPal's 1-pixel image hidden (otherwise the inline picture leaves a line of slack under itself), and 21px from the button to the next widget's line, on phones too (`theme-fixes.css`, sidebar section). The program page's own button is written in the page with the same margins.
+
 ## Phone menu: links to the parent pages
 
 In the phone menu, tapping a parent item such as "About Us" only opens its dropdown, so the parent page itself could not be reached. Each dropdown therefore gets a first item linking to the parent page:

@@ -146,7 +146,10 @@ body > .container { padding-bottom: 30px; }
 #sidebar1 .textwidget ul li a { font-weight: 600; }
 #sidebar1 .textwidget ul li em { display: block; font-style: normal; font-size: 0.85em; color: var(--bx-muted); margin-top: 2px; }
 #sidebar1 .widget_custom_html { text-align: center; padding-top: 14px; line-height: 1.5; }
-#sidebar1 .widget_custom_html form { margin-top: 10px !important; }
+#sidebar1 .widget_custom_html form { margin-top: 22px !important; }                                  /* the donate button: the same room as on the Youth Ambassadors page (1.77), */
+#sidebar1 .widget_custom_html form input[type="image"] { display: block; margin: 0 auto !important; }   /* 22px above it, the picture a block and PayPal's 1-pixel image hidden (no line-height slack under it), */
+#sidebar1 .widget_custom_html form img { display: none; }
+#sidebar1 .sidebar-container .widget-area.widget_custom_html { padding-bottom: 0 !important; margin-bottom: 21px !important; }   /* and 21px from it to the next widget's line, on phones too */
 #sidebar1 .widget_media_image { text-align: center; }
 
 /* ---------- desktop: sidebar one window tall, badge at the bottom, scroll lock when the window is tall enough ----------

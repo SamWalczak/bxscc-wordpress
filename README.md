@@ -13,7 +13,7 @@ Both `wp-content` folders keep their names on the server: the plugin's documenta
 
 ## Features
 
-### Plugin: BXSCC WordPress Enhancements 1.76
+### Plugin: BXSCC WordPress Enhancements 1.77
 
 It has no settings screen of its own (besides the reports under Events, Appearance > Site CSS and Tools > Link check). Install it, and these features are on:
 
