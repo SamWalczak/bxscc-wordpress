@@ -11,7 +11,10 @@ Version: 1.1.12
 Tags: custom-menu, custom-header, custom-background, custom-logo, featured-images, custom-colors, flexible-header, full-width-template, one-column, two-columns, three-columns, left-sidebar, right-sidebar, theme-options, threaded-comments, translation-ready, sticky-post, footer-widgets, microformats, blog, education, news
 License: GNU General Public License v3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.en.html
+Update URI: false
 */
+/* BXSCC 2026-10: "Update URI: false" above: WordPress never offers this theme an update from WordPress.org, which would
+   replace the local fixes with the original files. */
 
 /*Wordpress standart*/
 .wp-caption p.wp-caption-text {

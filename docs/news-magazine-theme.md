@@ -5,7 +5,7 @@ The site runs **News Magazine 1.1.12** by Web-Dorado. WordPress.org closed the t
 What it found and what was done, in two places:
 
 - **Block 16 of `bxscc-wordpress-enhancements.php`** switches off, from outside the theme, the parts that anyone could reach but no page of the site uses. Nothing in the theme's files changes for these.
-- **Four small edits to theme files** for what cannot be fixed from outside, in the theme's own files in [`wp-content/themes/news-magazine/`](../wp-content/themes/news-magazine/).
+- **Six small edits to theme files** for what cannot be fixed from outside, in the theme's own files in [`wp-content/themes/news-magazine/`](../wp-content/themes/news-magazine/).
 
 The whole theme is in this repository: WordPress.org closed it in 2019, so it can no longer be installed from the dashboard, and this copy is the way to get it back. Its history starts from the theme as released (rebuilt from the server's copy by reversing the recorded local edits, see below), so `git log -p -- wp-content/themes/news-magazine` shows every change made to it.
 
@@ -36,7 +36,10 @@ Each edit is marked in the file with a `BXSCC 2026-10` comment.
 | `inc/front/front_params_output.php` | The header "latest posts" ticker queries the database only when the ticker is switched on. | It ran three database queries on every page and threw the result away (the ticker is off). |
 | `inc/front/WDWT_front_functions.php` | Post-list thumbnails are measured from the image file on disk. | The theme fetched each image over HTTP just to read its size: a request from the server to itself per listed post, or to any other site a post's first image pointed at. Not triggered on the site today (no listed post has an image yet), so this prevents a slowdown and a server-side request forgery risk rather than fixing a current one. Images not on the site count as "size unknown", which the theme already handled. Since 1.69 (October 8, 2026), an address containing `%00` also counts as size unknown: decoded, it made `realpath()` throw a fatal error on PHP 8, which would have taken down every archive page listing such a post. |
 
-Wordfence reports changed theme files; mark these four "Ignore until file changes", like the earlier local edits.
+| `style.css` | `Update URI: false` added to the header (1.76 audit, October 8). | WordPress sent the theme's name to WordPress.org with every update check. The theme is closed there, but if it ever came back, or another theme took its name, the dashboard would offer those files as an update, and updating would replace these fixes. With the header WordPress does not ask. |
+| `inc/front/WDWT_front_params_output.php` | The Google web font loader script removed from `typography()`, with the three font lookups that only fed it (1.76 audit, October 8). | The site's font is self-hosted, and the plugin was already removing the loader from every page (block 3d); had that rewrite ever failed, the page would have gone out with the loader, contacting Google again. Pages are the same except for one blank line less where the script was. |
+
+Wordfence reports changed theme files; mark these "Ignore until file changes", like the earlier local edits. `style.css` was already marked for its earlier edit and is reported again once the 1.76 version is installed.
 
 ## Earlier local edits
 
@@ -55,6 +58,7 @@ Do not let Wordfence "Repair" these files: it would put back the original files 
 
 - **About 5 ms less per uncached page** from block 17: WordPress worked out the fonts of a block theme's `theme.json` on every page (about 6 ms) and printed nothing, since a classic theme has none. Skipped for classic themes.
 - **Three fewer database queries per page** from the ticker edit above.
+- **Three fewer font lookups per page** from the font loader edit above.
 
 Measured but left alone, because the gain does not justify the risk to the site:
 

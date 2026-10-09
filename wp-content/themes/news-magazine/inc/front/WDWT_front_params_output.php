@@ -206,33 +206,10 @@ class WDWT_front
     $this->typography_primary();
     $this->typography_inputs();
     echo '</style>';
-    $headers = $this->typography_headers_script();
-    $primary = $this->typography_primary_script();
-    $inputs = $this->typography_inputs_script();
-
+    /* BXSCC 2026-10: the Google web font loader that was printed here is removed: the site's font (Open Sans) is
+       self-hosted, and the BXSCC plugin already took the loader out of every page (block 3d). The three font
+       lookups that only fed it (typography_headers_script and the two after it) are no longer called. */
     ?>
-    <script>
-      WebFontConfig = {
-        google: {
-          families: [
-            '<?php echo $headers[0] ?>:<?php echo $headers[1] . $headers[2] ?>',
-            '<?php echo $primary[0] ?>:<?php echo $primary[1] . $primary[2] ?>',
-            '<?php echo $inputs[0] ?>:<?php echo $inputs[1] . $inputs[2] ?>'
-          ]
-        }
-
-      };
-      (function ()
-      {
-        var wf = document.createElement('script');
-        wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
-          '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
-        wf.type = 'text/javascript';
-        wf.async = 'true';
-        var s = document.getElementsByTagName('script')[0];
-        s.parentNode.insertBefore(wf, s);
-      })();
-    </script>
 
     <?php
   }
