@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.78
+ * Version: 1.79
  * Update URI: false
  */
 if (!defined('ABSPATH')) { exit; }
@@ -1692,3 +1692,142 @@ add_filter('wp_generate_attachment_metadata', function ($meta, $id) {
     }
     return $meta;
 }, 20, 2);
+
+/* 23. Search result text and link previews (October 2026).
+       - Search result text: a page's Excerpt (the Excerpt box in the editor's sidebar, now shown for pages too) is
+         printed as its meta description, the summary search engines may show under the page's title. A page without
+         an Excerpt gets none, and search engines write their own from the page.
+       - Link previews (Open Graph): a link to the site pasted into Facebook, LinkedIn, Discord, Slack, iMessage or X
+         becomes a card built from these tags: title, a sentence or two, a picture, the site name. Without them each
+         service guesses (Discord and Slack show the bare title, Facebook picks any photo).
+         - Title: the page's own title (the home page: the site name).
+         - Text: the Excerpt; without one, a yearly News and Events post (whose text comes from the events list)
+           gets a sentence naming its year, and any other page its first paragraph or table cell of at least 80
+           characters that is not a photo caption, cut at a word near 200.
+         - Picture: the page's Featured image; else the first photo in the page at least 600px wide (sponsor and
+           partner logos inside links to their websites are passed over; the photo's address decides which photo it
+           is, as in block 15); else img/share-card.jpg (1200 x 630: the logo and the site name on navy). The largest
+           copy WordPress made up to 1600px wide is named, with its size.
+       Only the home page, pages and posts get these tags; archive, search and not-found pages get none. WeChat does
+       not read Open Graph tags (its share card needs a WeChat Official Account). */
+add_action('init', function () { add_post_type_support('page', 'excerpt'); });
+function bx_og_text($html) {
+    $html = preg_replace('#<(script|style|figcaption)\b.*?</\1>#is', ' ', strip_shortcodes((string) $html));
+    $html = preg_replace('#<br\s*/?>#i', ' ', $html);
+    foreach (array('p', 'td') as $el) {   // a paragraph first, a table cell only if no paragraph is long enough
+        if (!preg_match_all('#<' . $el . '\b[^>]*>(.*?)</' . $el . '>#is', $html, $m)) { continue; }
+        foreach ($m[1] as $cell) {
+            if (stripos($cell, '<img') !== false) { continue; }   // a photo with its caption
+            if (preg_match('#^\s*<(em|i)\b[^>]*>.*</\1>\s*$#is', $cell)) { continue; }   // an italic line: a caption
+            $t = trim(preg_replace('/\s+/u', ' ', html_entity_decode(wp_strip_all_tags($cell), ENT_QUOTES, 'UTF-8')));
+            if (mb_strlen($t) >= 80) { return $t; }
+        }
+    }
+    return '';
+}
+function bx_og_trim($t, $max = 200) {
+    if (mb_strlen($t) <= $max) { return $t; }
+    $cut = mb_substr($t, 0, $max);
+    $sp = mb_strrpos($cut, ' ');
+    return rtrim(mb_substr($cut, 0, $sp !== false && $sp > $max * 0.6 ? $sp : $max), " ,;:.\u{2013}-") . "\u{2026}";
+}
+/* attachment id => array(url, width, height): the largest copy up to 1600px wide */
+function bx_og_copy($id) {
+    $meta = wp_get_attachment_metadata($id);
+    if (!is_array($meta) || empty($meta['width'])) { return null; }
+    $best = null;
+    foreach (array_merge(array('full'), array_keys((array) ($meta['sizes'] ?? array()))) as $size) {
+        $src = wp_get_attachment_image_src($id, $size);
+        if ($src && $src[1] <= 1600 && (!$best || $src[1] > $best[1])) { $best = $src; }
+    }
+    return $best ? array($best[0], (int) $best[1], (int) $best[2]) : null;
+}
+function bx_og_image($post) {
+    $cands = array();
+    if ($post && has_post_thumbnail($post)) { $cands[] = (int) get_post_thumbnail_id($post); }
+    // a photo inside a link to another website is a sponsor's or partner's logo: passed over
+    $home = wp_parse_url(home_url(), PHP_URL_HOST);
+    $content = preg_replace_callback('#<a\b[^>]*\bhref="([^"]*)"[^>]*>.*?</a>#is', function ($a) use ($home) {
+        $h = wp_parse_url($a[1], PHP_URL_HOST);
+        return ($h && strcasecmp($h, $home) !== 0) ? '' : $a[0];
+    }, $post ? $post->post_content : '');
+    if ($post && preg_match_all('#<img\b[^>]*>#i', $content, $m)) {
+        foreach ($m[0] as $tag) {
+            // the address decides which photo it is, as in block 15 (a wp-image-123 class can be stale)
+            if (preg_match('#\ssrc="([^"]+)"#', $tag, $a) && ($id = bx_upload_attachment_id(html_entity_decode($a[1])))) { $cands[] = (int) $id; }
+        }
+    }
+    foreach ($cands as $id) {
+        $meta = wp_get_attachment_metadata($id);
+        if (is_array($meta) && (int) ($meta['width'] ?? 0) >= 600 && ($c = bx_og_copy($id))) {
+            $alt = trim((string) get_post_meta($id, '_wp_attachment_image_alt', true));
+            return array($c[0], $c[1], $c[2], $alt);
+        }
+    }
+    return array(plugins_url('img/share-card.jpg', __FILE__), 1200, 630, get_bloginfo('name') . ' logo');
+}
+add_action('wp_head', function () {
+    if (!(is_front_page() || is_singular(array('page', 'post')))) { return; }
+    $site = get_bloginfo('name');
+    $post = is_singular() ? get_queried_object() : null;
+    if (is_front_page()) {
+        $title = $site; $url = home_url('/'); $type = 'website';
+    } else {
+        $title = wp_strip_all_tags(get_the_title($post)); $url = get_permalink($post); $type = $post->post_type === 'post' ? 'article' : 'website';
+    }
+    $excerpt = $post ? trim(preg_replace('/\s+/u', ' ', wp_strip_all_tags($post->post_excerpt))) : '';
+    if ($excerpt !== '') { printf('<meta name="description" content="%s" />' . "\n", esc_attr($excerpt)); }
+    $desc = $excerpt;
+    if ($desc === '' && $post && preg_match('#\[bx_year\s+year="?(\d{4})#', $post->post_content, $y)) {
+        $desc = sprintf('Events, programs and news of the %s in %s.', $site, $y[1]);
+    }
+    if ($desc === '' && $post) { $desc = bx_og_text($post->post_content); }
+    if ($desc === '') { $desc = get_bloginfo('description'); }
+    $desc = bx_og_trim($desc);
+    list($img, $w, $h, $alt) = bx_og_image($post);
+    $tags = array(
+        array('property', 'og:type', $type), array('property', 'og:site_name', $site), array('property', 'og:locale', 'en_US'),
+        array('property', 'og:title', $title), array('property', 'og:description', $desc), array('property', 'og:url', $url),
+        array('property', 'og:image', $img), array('property', 'og:image:width', $w), array('property', 'og:image:height', $h),
+        array('property', 'og:image:alt', $alt !== '' ? $alt : $title),
+        array('name', 'twitter:card', $w >= 600 ? 'summary_large_image' : 'summary'),
+    );
+    foreach ($tags as $t) { printf('<meta %s="%s" content="%s" />' . "\n", $t[0], esc_attr($t[1]), esc_attr((string) $t[2])); }
+}, 5);
+
+/* 24. Search engines (October 2026).
+       - Date, category, tag and author archives are marked noindex ("don't list this page"; links on them are still
+         followed). Each only repeats post titles that have pages of their own, and the date archives' heading names a
+         single day ("Archive For December 18, 2008" on /2008/). Visitors who reach one still see it.
+       - The sitemap (/wp-sitemap.xml, the one to give Google Search Console and Bing Webmaster Tools) lists pages and
+         posts only: WordPress's users list (it showed the admin's username) and categories list are left out.
+       - The home page carries WebSite structured data: the name search engines should show for the site, with BXSCC as
+         its short name.
+       - Addresses of pages removed in October 2026 that search engines still list are sent on permanently (301):
+         /updated-recently/ (and its /page/N/ pages) to News and Events, /image-gallery/ to History. Only when the
+         address would otherwise be "not found". */
+add_filter('wp_robots', function ($robots) {
+    if (is_date() || is_category() || is_tag() || is_author()) {
+        $robots['noindex'] = true;
+        $robots['follow'] = true;
+        unset($robots['max-image-preview']);
+    }
+    return $robots;
+});
+add_filter('wp_sitemaps_add_provider', function ($provider, $name) {
+    return in_array($name, array('users', 'taxonomies'), true) ? false : $provider;
+}, 10, 2);
+add_action('wp_head', function () {
+    if (!is_front_page()) { return; }
+    $data = array('@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => get_bloginfo('name'),
+                  'alternateName' => array('BXSCC'), 'url' => home_url('/'));
+    echo '<script type="application/ld+json">' . wp_json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . "</script>\n";
+}, 6);
+add_action('template_redirect', function () {
+    if (!is_404()) { return; }
+    $path = '/' . trim((string) wp_parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/') . '/';
+    $to = array('#^/updated-recently/(page/\d+/)?$#' => '/news-and-events/', '#^/image-gallery/$#' => '/about-us/history/');
+    foreach ($to as $re => $dest) {
+        if (preg_match($re, $path)) { wp_safe_redirect(home_url($dest), 301); exit; }
+    }
+}, 1);

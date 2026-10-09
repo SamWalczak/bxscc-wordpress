@@ -13,7 +13,7 @@ Both `wp-content` folders keep their names on the server: the plugin's documenta
 
 ## Features
 
-### Plugin: BXSCC WordPress Enhancements 1.78
+### Plugin: BXSCC WordPress Enhancements 1.79
 
 It has no settings screen of its own (besides the reports under Events, Appearance > Site CSS and Tools > Link check). Install it, and these features are on:
 
@@ -31,6 +31,7 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Page markup** | The table, grid and button-bar patterns page content uses, and the CSS classes that style them. | [docs/page-markup.md](docs/page-markup.md) |
 | **Fonts** | Self-hosted Open Sans (no Google Fonts requests), with fallback metrics so text does not jump. | [docs/fonts.md](docs/fonts.md) |
 | **News Magazine theme** | The theme's unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off from the plugin, and its layout widths are kept valid. The theme's own file edits are listed below. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
+| **Search and sharing** | Each page's Excerpt is its meta description; link previews (Open Graph) with a picture for every page and a default card; archive pages kept out of search; a sitemap of pages and posts only; the site's name for search results; old addresses sent on to their replacements. | [docs/search-and-sharing.md](docs/search-and-sharing.md) |
 | **Performance and security** | Scripts, styles and the icon font a page does not need are left out of it, jQuery loaded at the end of the page (except where the banner needs it), emoji scripts off, key images and fonts preloaded; XML-RPC off, security headers, no "updates" from WordPress.org for the plugin or the theme, the link checker kept out of the server's own network, and how the plugin's own forms, queries and page rewrite are protected. The two October 2026 audits are summarized there. | [docs/performance-and-security.md](docs/performance-and-security.md) |
 
 ### Theme: News Magazine 1.1.12 with local fixes
@@ -118,6 +119,7 @@ wp-content/plugins/bxscc-wordpress-enhancements/
   links/links.php                    the weekly dead-link check, warnings, the archive swap, replacing addresses,
                                      Save Page Now, Tools > Link check, and wp bx-links
   templates/404.php                  the not-found page, in the site's layout
+  img/share-card.jpg                 the default link-preview picture (1200 x 630)
   fonts/                             Open Sans woff2 files and their license (SIL OFL 1.1)
 wp-content/themes/news-magazine/     News Magazine 1.1.12 with the local fixes
 docs/                                feature documentation (file paths in it are relative to the plugin folder)
@@ -131,6 +133,8 @@ tools/photo-metadata.php             one-time script that takes the camera data 
                                      Media Library, with a backup (October 2026 audit; see docs/photos.md)
 tools/img-max-width.php              one-time script that keeps photos with a pixel max-width inside the column on
                                      narrow phones (October 2026 cross-browser test)
+tools/seo-content.php                one-time script that writes each page's search description (Excerpt) and
+                                     retitles the 2015 delegation list (October 2026 SEO review)
 tools/https-check.php                read-only report: which http:// links have a working https:// version
                                      (writes ~/https-check.html with links to click)
 tools/donate-button.php              one-time script that serves the PayPal donate button's picture from the Media
