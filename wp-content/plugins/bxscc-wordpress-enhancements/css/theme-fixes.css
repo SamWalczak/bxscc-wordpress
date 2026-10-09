@@ -176,6 +176,7 @@ body > .container { padding-bottom: 30px; }
   body > .container > #content { order: 1; width: 100% !important; float: none !important; }
   body > .container > #sidebar1 { order: 2; width: 100% !important; float: none !important; }
   body > .container > .clear { display: none; }
+  html.bx-js:not(.bx-parsed) body > .container > #sidebar1 { visibility: hidden; }   /* until the content has arrived (block 1b, 1.78) */
 }
 
 /* ---------- tablets: keep the sidebar as one full-width column ---------- */

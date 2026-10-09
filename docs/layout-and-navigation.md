@@ -12,6 +12,10 @@ Related CSS in `theme-fixes.css`: in the side-by-side layout the sidebar is one 
 
 The PayPal button in the sidebar widget (`custom_html-2`) gets the same room as the one on the Youth Ambassadors Program page (1.77): 22px between the text and the button, the picture centered as a block with PayPal's 1-pixel image hidden (otherwise the inline picture leaves a line of slack under itself), and 21px from the button to the next widget's line, on phones too (`theme-fixes.css`, sidebar section). The program page's own button is written in the page with the same margins.
 
+## Sidebar on tablets and phones while a page loads
+
+From 1024px down the sidebar is shown under the content, but the theme writes it before the content in the page. On a slow connection a browser could paint the donate box and Hot Links as if they were the page, then push them down when the content arrived (found in the October 2026 cross-browser test by pausing a page's delivery just before the content). Since 1.78 the stacked sidebar stays invisible, its space unchanged, until the page is marked `bx-parsed`: an inline script printed at the start of the footer (block 1b), so right after the content and before the footer's scripts load, with `DOMContentLoaded` as the fallback (block 1). Rule in `theme-fixes.css`, inside the stacked-layout media query, so desktop and laptop widths (1025px and up) are untouched; without scripts the sidebar shows as before.
+
 ## Phone menu: links to the parent pages
 
 In the phone menu, tapping a parent item such as "About Us" only opens its dropdown, so the parent page itself could not be reached. Each dropdown therefore gets a first item linking to the parent page:

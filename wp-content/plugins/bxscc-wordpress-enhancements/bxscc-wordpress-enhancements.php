@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.77
+ * Version: 1.78
  * Update URI: false
  */
 if (!defined('ABSPATH')) { exit; }
@@ -11,9 +11,19 @@ if (!defined('ABSPATH')) { exit; }
       that need the scripts (photos shown only once they have arrived, block 15) only apply when scripts run. */
 add_action('wp_head', function () {
 ?>
-<script>(function(){document.documentElement.classList.add("bx-js");try{if(localStorage.getItem("bx-theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");}}catch(e){}})();</script>
+<script>(function(){document.documentElement.classList.add("bx-js");document.addEventListener("DOMContentLoaded",function(){document.documentElement.classList.add("bx-parsed");});try{if(localStorage.getItem("bx-theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");}}catch(e){}})();</script>
 <?php
 }, 1);
+
+/* 1b. Tablets and phones (1024px and narrower) show the sidebar under the content, but the theme writes the sidebar
+       before the content in the page. On a slow connection the browser could paint the donate box and Hot Links as
+       the whole page, then push them down once the content arrived. theme-fixes.css keeps the stacked sidebar
+       invisible (its space unchanged) until html.bx-parsed: set here, the moment the footer is reached (so after the
+       content, before the footer scripts load), with block 1's DOMContentLoaded as the fallback. Desktop and laptop
+       layouts are untouched; without scripts the sidebar shows as before. */
+add_action('wp_footer', function () {
+    echo '<script>document.documentElement.classList.add("bx-parsed")</script>' . "\n";
+}, 0);
 
 /* 2. Photo grid and lightbox styling, on every page (only does something where a .bx-grid exists). */
 add_action('wp_head', function () {
@@ -151,7 +161,7 @@ add_action('wp_footer', function () {
   if (!links.length) { return; }
   var box = document.createElement("div");
   box.className = "bx-lightbox"; box.id = "bx-lightbox"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
-  box.innerHTML = '<button type="button" class="bx-lb-nav bx-lb-prev" aria-label="Previous photo">&#8249;</button><figure><img src="" alt="" /><p></p></figure><button type="button" class="bx-lb-nav bx-lb-next" aria-label="Next photo">&#8250;</button>';
+  box.innerHTML = '<button type="button" class="bx-lb-nav bx-lb-prev" aria-label="Previous photo">&#8249;</button><figure><img alt="" /><p></p></figure><button type="button" class="bx-lb-nav bx-lb-next" aria-label="Next photo">&#8250;</button>';
   document.body.appendChild(box);
   var img = box.querySelector("img");
   var cap = box.querySelector("p");
@@ -215,7 +225,7 @@ add_action('wp_footer', function () {
     want = "";
     if (pending && !pending.complete) { pending.onload = pending.onerror = null; pending.removeAttribute("src"); }
     pending = null;
-    img.src = "";
+    img.removeAttribute("src");   // an empty src would fire an error event (and in older browsers request the page itself)
   }
 
   links.forEach(function (link) {

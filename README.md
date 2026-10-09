@@ -13,7 +13,7 @@ Both `wp-content` folders keep their names on the server: the plugin's documenta
 
 ## Features
 
-### Plugin: BXSCC WordPress Enhancements 1.77
+### Plugin: BXSCC WordPress Enhancements 1.78
 
 It has no settings screen of its own (besides the reports under Events, Appearance > Site CSS and Tools > Link check). Install it, and these features are on:
 
@@ -129,6 +129,10 @@ tools/ya-2018.php ... ya-2025.php    one-time scripts that put the new layout on
 tools/ya-program.php                 one-time script that put the new layout on the Youth Ambassadors Program page
 tools/photo-metadata.php             one-time script that takes the camera data out of the photos already in the
                                      Media Library, with a backup (October 2026 audit; see docs/photos.md)
+tools/img-max-width.php              one-time script that keeps photos with a pixel max-width inside the column on
+                                     narrow phones (October 2026 cross-browser test)
+tools/https-check.php                read-only report: which http:// links have a working https:// version
+                                     (writes ~/https-check.html with links to click)
 tools/donate-button.php              one-time script that serves the PayPal donate button's picture from the Media
                                      Library and blanks PayPal's tracking pixel (October 2026 audit)
 ```

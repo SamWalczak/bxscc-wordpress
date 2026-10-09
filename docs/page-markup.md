@@ -36,8 +36,8 @@ Event lists generate exactly this markup; see [events.md](events.md).
 
 | Class | Used on | Effect |
 |---|---|---|
-| `table.bx-roster` with `<col class="bx-c-role">`, `bx-c-name`, `bx-c-email` | Leadership | Fixed column widths (32 / 22 / 46%) shared by every table on the page, so the officer and subcommittee tables line up. |
-| `table.bx-speakers`, header row `tr.bx-thead` | CHINA Town Hall | Narrow year column, labeled header row, two equal text columns. On phones the header row is hidden and the third column is prefixed "Baltimore local speaker:". |
+| `table.bx-roster` with `<col class="bx-c-role">`, `bx-c-name`, `bx-c-email` | Leadership | Fixed column widths (32 / 22 / 46%) shared by every table on the page, so the officer and subcommittee tables line up. On phones (under 600px) the cells stack and the column definitions are switched off: Chrome, Edge, Samsung Internet and Firefox otherwise kept the 32% width on the stacked cells, squeezing the tables into a third of the screen (Safari did not; fixed in 1.78). |
+| `table.bx-speakers`, header row `tr.bx-thead` | CHINA Town Hall | Narrow year column, labeled header row, two equal text columns (9 / 45.5 / 45.5% from 600px up since 1.78: browsers' automatic layout split the text columns unevenly, about 37/63 in Safari and 42/58 in Chrome and Firefox). On phones the header row is hidden and the third column is prefixed "Baltimore local speaker:". |
 | Three-column tables (no class) | | The middle column is flexible and the third does not wrap (it wraps on phones). |
 
 ## Quotes and reflections

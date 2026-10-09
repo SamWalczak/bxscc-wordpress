@@ -75,6 +75,10 @@ html[data-theme="dark"] .bx-theme-toggle button:hover { background: #8fc1ff; col
 /* ---------- speaker table (CHINA Town Hall): narrow year column, labeled header row, two text columns of equal weight ---------- */
 :is(.entry, .entry-content) table.bx-speakers td:first-child { width: 70px; }
 :is(.entry, .entry-content) table.bx-speakers td:nth-child(2), :is(.entry, .entry-content) table.bx-speakers td:nth-child(3) { width: auto; max-width: none; white-space: normal; font-size: 0.95em; line-height: 1.5; }
+@media (min-width: 600px) {   /* the two text columns equal in every browser (Safari's automatic layout split them about 37/63, Chrome and Firefox 42/58; 1.78) */
+  :is(.entry, .entry-content) table.bx-speakers td:first-child { width: 9%; }
+  :is(.entry, .entry-content) table.bx-speakers td:nth-child(2), :is(.entry, .entry-content) table.bx-speakers td:nth-child(3) { width: 45.5%; }
+}
 :is(.entry, .entry-content) table.bx-speakers tr.bx-thead td { background: #e6e9f0; color: var(--bx-navy); font-size: 0.85em; letter-spacing: 0.02em; padding: 10px 18px; }
 html[data-theme="dark"] :is(.entry, .entry-content) table.bx-speakers tr.bx-thead td { background: #232a3a; color: var(--bx-text); }
 @media (max-width: 599px) {
@@ -144,7 +148,7 @@ html[data-theme="dark"] .bx-year-nav, html[data-theme="dark"] .bx-subnav { borde
 :is(.entry, .entry-content) table.bx-roster col.bx-c-email { width: 46%; }
 :is(.entry, .entry-content) table.bx-roster td { width: auto !important; }
 :is(.entry, .entry-content) table.bx-roster td:nth-child(3) { white-space: normal; overflow-wrap: anywhere; }
-@media (max-width: 599px) { :is(.entry, .entry-content) table.bx-roster { table-layout: auto; } }
+@media (max-width: 599px) { :is(.entry, .entry-content) table.bx-roster { table-layout: auto; } :is(.entry, .entry-content) table.bx-roster colgroup, :is(.entry, .entry-content) table.bx-roster col { display: none; } }   /* phones: without this Chrome, Edge and Firefox keep the 32% column width on the stacked cells (1.78) */
 
 /* Two-column rows: line up the first line of the label with the first line of the text beside it.
    Baseline alignment lines up the text itself, so the label's smaller font and the paragraph's
