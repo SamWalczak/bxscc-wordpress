@@ -1,8 +1,8 @@
 # Performance and security
 
-Code: blocks 3d, 4, 4b, 5, 6, 10, 11, 14, 15, 17, 18 and 21 of `bxscc-wordpress-enhancements.php`, plus the checks described below in `css-editor.php`, `events/` and `links/`.
+Code: blocks 3d, 4, 4b, 5, 6, 10, 11, 14, 14b, 15, 17, 18, 21 and 22 of `bxscc-wordpress-enhancements.php`, plus the checks described below in `css-editor.php`, `events/` and `links/`.
 
-The October 2026 audit (version 1.69) is summarized at the end.
+The two October 2026 audits (versions 1.69 and 1.76) are summarized at the end.
 
 ## Security
 
@@ -12,6 +12,7 @@ The October 2026 audit (version 1.69) is summarized at the end.
 - **The archive.org keys go only to the Archive.** Requests that carry them never follow a redirect (until 1.69 a redirect to another host received the keys). The keys are stored encrypted and never shown again, and the functions that handle them mark them as sensitive, so PHP 8.2 and later leave them out of error traces; see [links.md](links.md).
 - **PHP cannot be edited from the dashboard**, by anyone; see [site-css.md](site-css.md#php-cannot-be-edited-from-the-dashboard). That switch lives in this plugin, so it is off only while the plugin is active. `define('DISALLOW_FILE_EDIT', true);` in `wp-config.php` does the same without depending on any plugin, and is worth setting as well.
 - **Every dashboard action checks who is asking and that the request came from the form**: a capability check (`edit_pages` for events, `edit_theme_options` for Site CSS) and a WordPress nonce on every save, delete and restore. Nothing is open to visitors who are not logged in (no `nopriv` handlers, no AJAX or REST endpoints).
+- **No "updates" from WordPress.org** for the plugin or the theme (`Update URI: false` in their headers, since 1.76). WordPress sent both names to WordPress.org with every update check; if anyone ever published a plugin under this plugin's folder name there, or the closed theme came back, the dashboard would offer their files as an update and one click would replace the site's code. With the header, WordPress does not ask about either.
 - **Database queries** with any outside value go through `$wpdb->prepare()` or are cast to integers.
 - **What events may contain.** Titles, Time or note, and Location allow links, bold, italic and line breaks, nothing else; they are filtered to those tags when saved and again when shown. Descriptions follow WordPress's own rule for posts (filtered unless the user may post unfiltered HTML).
 - **Site CSS cannot break out of its style block.** A save is refused if the CSS contains `</style` or `<script`, checked both as written and as visitors receive it (with comments removed, which could otherwise join `</sty` and `le`), and any `</style` is escaped when the CSS is printed regardless. History file names are limited to letters, digits and a few symbols, so the editor never reads or writes outside `css/history/`. That folder holds the editors' login names and notes, so it carries an `.htaccess` that refuses it to web visitors on Apache (cPanel's web server).
@@ -39,6 +40,7 @@ No page got heavier. Every page was also compared before and after at six screen
 What changed:
 
 - **Files a page does not need are left out of it** (block 14), and come back by themselves where they are needed, so WordPress keeps working normally: the theme's jQuery UI effects (nothing calls them); `comment-reply.js` (comments stay closed); the block editor's stylesheets and WordPress's "global styles" (the colors, font sizes and layouts a block can be given), left out unless the page was built with blocks or a block widget is in the sidebar (Custom HTML and Shortcode blocks, which the home page and News and Events use, need none of it); and Font Awesome's stylesheet and 64 KB icon font, left out unless one of the theme's other social icons (Twitter, Google+, RSS, Instagram, YouTube) is switched on in its settings, or its Social Icons widget is in the sidebar. The header's Facebook, LinkedIn and Discord icons are drawn by `theme-fixes.css` (see [header-and-footer.md](header-and-footer.md#social-icons)). Until 1.69 the block styles and the icon font were left out everywhere: a new page built with blocks lost its colors and button styles, and a newly switched-on icon showed an empty square.
+- **jQuery at the end of the page** (block 14b, since 1.76): jQuery, jQuery Migrate and the theme's `javascript.js` load at the end of the page instead of in `<head>`, where they held up the first paint, on every page except those with the banner slideshow (the home page and its page 2: the slideshow's script needs jQuery while the page loads). Nothing earlier in those pages needs them (checked on every page), and the plugin's own scripts that use jQuery (blocks 3f and 3g) still print after them. Measured on a slow phone connection, empty browser cache: text appears 0.2 to 0.4 seconds sooner (About Us 1160 to 920 ms, the 2018 Youth Ambassadors page 1328 to 924 ms, the program page 1308 to 1020 ms, 8 page types); no change on desktop. They stay in `<head>` on every page while a theme setting writes a script into the page (the header's "Latest posts" ticker, or code pasted under the theme's Integration or Advertising settings), and on a page whose text, or a widget's, has a script written into it; none of these is the case today. WordPress itself also puts them back in `<head>` if a script printed there depends on them.
 - **jQuery Migrate stays.** It looks unused, but the theme's slideshow code calls `jQuery(window).load(...)`, which jQuery 3 removed and Migrate restores. Without it the banner would not size or start.
 - **Photos come in the size they are shown at** (block 15): see [photos.md](photos.md#photo-sizes) and [banner.md](banner.md#photo-size).
 - **One database query for all of a page's photos.** Finding which upload a photo address belongs to takes one query for every photo on the page, and their details load together, instead of up to five queries per photo.
@@ -53,6 +55,7 @@ What changed:
 - **Video previews** load YouTube only on click, and fetch the thumbnail only when the preview comes near the screen; see [video-previews.md](video-previews.md).
 - **CSS is inline**, two blocks at the end of `<head>`, with no extra stylesheet requests and without the files' comments and spacing; see [site-css.md](site-css.md).
 - **New photos are WebP** (block 21): see [photos.md](photos.md#new-uploads-are-webp).
+- **No camera data in photo files** (block 22, since 1.76): the copies of the program page's main photo carried 43 KB of camera data each, a banner slide 10 to 17 KB; on a slow phone connection that photo shows about 0.2 to 0.35 seconds sooner once `tools/photo-metadata.php` has run (simulated by serving its copies that much smaller). See [photos.md](photos.md#camera-data).
 - **No jump under photos without dimensions** (block 15): see [photos.md](photos.md#photo-sizes).
 - **The year lists skip a lookup they do not use** (categories of the yearly posts): one query fewer on News and Events and on each yearly post. The Link check report loads its pages and event titles in two queries instead of one per place listed.
 
@@ -61,7 +64,7 @@ What changed:
 One-time changes on the server, not code, found in the same review:
 
 - **Autoloaded options.** WordPress loads every "autoload" option on every uncached request. On bxscc.org, 237 KB of the 307 KB came from plugins and a theme no longer active, plus a stale folder-size cache. Switching those to not autoload (`wp_set_options_autoload()`) keeps them in the database but out of every request. Housekeeping more than speed: on a local copy the difference in page time was within measuring noise.
-- **Third-party files in the sidebar.** The PayPal donate button's image was loaded from baltimoresistercities.org, and PayPal's tracking pixel from paypalobjects.com, on every page. Hosting the button image in the site's Media Library and deleting the pixel removes two outside connections from every page, and PayPal's record of every visit; the button works the same.
+- **Third-party files in the sidebar.** The PayPal donate button's image was loaded from baltimoresistercities.org, and PayPal's tracking pixel from paypalobjects.com, on every page (and again in the program page's own text). `tools/donate-button.php` (1.76 audit) puts the button image in the Media Library and points the button at it, and replaces the pixel's address with a blank 1-pixel image written into the page; the tag stays so that nothing moves, not even by half a pixel. That removes two outside connections from every page, and PayPal's record of every visit; the button looks and works the same.
 - **Unused plugins.** An active plugin's PHP runs on every uncached request even if nothing on the site uses it.
 
 ## October 2026 audit (version 1.69)
@@ -75,3 +78,26 @@ Faster: phones no longer download the 2560-pixel banner photo before the one the
 Checked and sound: every dashboard form (capability and nonce), SQL, the Site CSS editor, the page rewrite against crafted pages and search terms, the inline scripts (no unsafe use of the address, captions or data), the shortcodes, email, cron, cache safety (no page varies by cookie or header), and the theme's earlier fixes (the removed AJAX handlers stay removed).
 
 Recommended outside the plugin (not code): a `.htaccess` rule refusing direct requests to the theme's PHP files (27 of them stop with a fatal error when requested directly, which writes to an `error_log` each time), cache lifetimes for CSS, JavaScript and fonts, Wordfence's option against username discovery, and a one-time check that `wp-config.php` has its own secret keys (the archive.org keys are encrypted with them).
+
+## October 2026 audit (version 1.76)
+
+After the October content work (the program page and the 2018, 2019, 2024 and 2025 Youth Ambassadors pages, versions 1.70 to 1.75), three more independent reviews: the plugin's security, the theme's and the new content's security, and speed (measured through a local HTTP/2 proxy that serves photos at their real sizes, on a simulated slow phone and a desktop). A fourth review checked the fixes. Nothing visitors see changed: the HTML of every page type differs from 1.75 only in where four script tags sit (jQuery, above), full-page screenshots of all 45 page types at 1280 and 390 pixels are identical, the menus, dark mode, lightbox and resizing behave the same with no script errors, and the sidebar donate button is pixel-identical after `tools/donate-button.php`.
+
+Fixed or added:
+
+- **Faster first paint** on every page but the home page: jQuery at the end of the page (block 14b, above).
+- **Camera data out of photo files** (block 22 for new uploads, `tools/photo-metadata.php` once for the library): smaller files, and no locations in the photos visitors download. See [photos.md](photos.md#camera-data).
+- **No updates offered from WordPress.org** for the plugin or the theme (above).
+- **The donate button** no longer loads anything from two other sites (`tools/donate-button.php`, above).
+- **The theme no longer contains the Google web font loader** that the plugin was removing from every page: had the plugin's page rewrite ever failed, the loader would have come back. See [news-magazine-theme.md](news-magazine-theme.md).
+
+Checked and sound: the code added since 1.69 (no visitor input, nothing written, nothing that varies by user, so the page cache stays safe; under 0.1 ms per page); every dashboard action tried as a visitor and as each role without the form's token (all refused, nothing changed); the link checker against 28 spellings of internal addresses behind a redirect, and the archive.org keys behind a redirect; the page rewrite against crafted search terms and addresses; the theme's switched-off endpoints and its search, archives and odd query values; the new pages (no scripts, frames, event handlers or `javascript:` links, `noopener` on every link that opens a new window, nothing loaded over http); the content scripts (refused over the web, fingerprint checks, dry runs, revisions kept). Server time 27 to 46 ms per uncached page; layout shift 0 on every measured page.
+
+Measured but left as they are, because they would change what visitors see or could not be checked here:
+
+- **The 2018 page's lower photos load lazily.** Two photos far down the page load at the same time as its main photo; marking them `loading="lazy"` would let the main photo arrive sooner, but WordPress would then pick a smaller copy of one of them on desktop (not pixel-identical), and the gain could not be measured (no file sizes on record for the 2018 photos).
+- **Tighter photo sizes on phones**, and **trimming the theme's `style.css`** (17% of it is used): a different photo copy, and a risk of losing styling not exercised in the test.
+- **A Meipian link's sharer id** (`share_user_mpuuid`, on the 2018 and program pages) identifies the account that shared the article. Removing it is a content change, and whether the shorter link still opens the article could not be checked from here.
+- **`rel="noopener"` on the theme's social icons**: current browsers apply it to every link that opens a new window.
+
+To check on the live site (not code): that `error_log` files are refused to visitors (the theme's showed the server's folder layout), that the page cache's purge address answers only the server itself, and, using `tools/photo-metadata.php`'s report, the "original image" files that still carry a location. WordPress shows login names at `/?author=1` and `/wp-json/wp/v2/users`; Wordfence's option against username discovery, on since October 8, hides them.

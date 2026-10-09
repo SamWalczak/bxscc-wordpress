@@ -13,7 +13,7 @@ Both `wp-content` folders keep their names on the server: the plugin's documenta
 
 ## Features
 
-### Plugin: BXSCC WordPress Enhancements 1.75
+### Plugin: BXSCC WordPress Enhancements 1.76
 
 It has no settings screen of its own (besides the reports under Events, Appearance > Site CSS and Tools > Link check). Install it, and these features are on:
 
@@ -22,7 +22,7 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Events** | Events are small records (title, dates, time or note, location, description) in their own table. They appear in reusable *sections* on any page, and on automatic yearly archive pages. Dates can be days, months, seasons or years, single or spans. | [docs/events.md](docs/events.md) |
 | **Site CSS** | All site styling lives in two files in the plugin, `css/components.css` and `css/theme-fixes.css`, editable from **Appearance > Site CSS** with a saved, comparable, restorable history of every version. Dashboard editing of PHP files is switched off. | [docs/site-css.md](docs/site-css.md) |
 | **Banner** | Fixes and improvements to the theme's home page slideshow: random start slide, fast loading in viewing order, each screen downloading a photo size it needs, a placeholder while a photo loads, true crossfades, arrows that never freeze or fight the timer, and uncropped photos in the lightbox, downloaded after everything else. | [docs/banner.md](docs/banner.md) |
-| **Photos** | Photo grids for page content, a lightbox for every content photo (grouped, keyboard and swipe navigation, captions), hand-written photo tags served in the size they are shown at, photos that appear whole (with the banner's loading box while one downloads) instead of drawing from the top down, and new uploads stored as WebP (the uploaded file kept as the original). | [docs/photos.md](docs/photos.md) |
+| **Photos** | Photo grids for page content, a lightbox for every content photo (grouped, keyboard and swipe navigation, captions), hand-written photo tags served in the size they are shown at, photos that appear whole (with the banner's loading box while one downloads) instead of drawing from the top down, new uploads stored as WebP (the uploaded file kept as the original), and camera data (including locations) taken out of the photo files pages show, without changing a pixel. | [docs/photos.md](docs/photos.md) |
 | **Dead links** | Every link to another site is checked weekly. One that fails three weekly checks in a row triggers an email; the report then offers the Internet Archive's copy of the page from around when the link was added (swapped in as pages are built), a new address (written into every page and event that has the old one), or keeping the original. A setting makes the archive swap automatic. Working pages the Archive has never captured are sent to its Save Page Now service. Report and settings: **Tools > Link check**. | [docs/links.md](docs/links.md) |
 | **Video previews** | YouTube videos show a thumbnail and load the player (privacy-enhanced mode) only when clicked. | [docs/video-previews.md](docs/video-previews.md) |
 | **Header and footer** | Two-line site title, correct social-icon labels (including a Discord icon), current copyright year with a bilingual line. | [docs/header-and-footer.md](docs/header-and-footer.md) |
@@ -31,7 +31,7 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 | **Page markup** | The table, grid and button-bar patterns page content uses, and the CSS classes that style them. | [docs/page-markup.md](docs/page-markup.md) |
 | **Fonts** | Self-hosted Open Sans (no Google Fonts requests), with fallback metrics so text does not jump. | [docs/fonts.md](docs/fonts.md) |
 | **News Magazine theme** | The theme's unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off from the plugin, and its layout widths are kept valid. The theme's own file edits are listed below. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
-| **Performance and security** | Scripts, styles and the icon font a page does not need are left out of it, emoji scripts off, key images and fonts preloaded; XML-RPC off, security headers, the link checker kept out of the server's own network, and how the plugin's own forms, queries and page rewrite are protected. The October 2026 audit is summarized there. | [docs/performance-and-security.md](docs/performance-and-security.md) |
+| **Performance and security** | Scripts, styles and the icon font a page does not need are left out of it, jQuery loaded at the end of the page (except where the banner needs it), emoji scripts off, key images and fonts preloaded; XML-RPC off, security headers, no "updates" from WordPress.org for the plugin or the theme, the link checker kept out of the server's own network, and how the plugin's own forms, queries and page rewrite are protected. The two October 2026 audits are summarized there. | [docs/performance-and-security.md](docs/performance-and-security.md) |
 
 ### Theme: News Magazine 1.1.12 with local fixes
 
@@ -42,6 +42,8 @@ WordPress.org closed the theme in 2019 and no update will come, so it is kept he
 | Runs on PHP 8 without errors or deprecation warnings: the slider and banner widget, an undeclared property, a parameter order | `inc/front/front_params_output.php`, `inc/widgets/widget-advert.php`, `inc/admin/page_slider.php`, `inc/lib/WDWT_input.php` | Aug 2024, Oct 2026 |
 | Post-list thumbnails measured from the image file on disk, not fetched over HTTP (no requests from the server to itself or to other sites) | `inc/front/WDWT_front_functions.php` | Oct 2026 |
 | The header news ticker queries the database only when it is switched on (three fewer queries per page) | `inc/front/front_params_output.php` | Oct 2026 |
+| Never offered an "update" from WordPress.org, which would replace these fixes | `style.css` | Oct 2026 |
+| The unused Google web font loader removed (the site's font is self-hosted) | `inc/front/WDWT_front_params_output.php` | Oct 2026 |
 | The logo keeps its real size | `style.css` | Aug 2024 |
 | The block editor shows pages in the site's styles | `functions.php`, `editor-style.css` | Oct 2026 |
 
@@ -125,6 +127,10 @@ tools/photo-loading.php              one-time script that fixed the loading orde
 tools/ya-2018.php ... ya-2025.php    one-time scripts that put the new layout on the 2018, 2019, 2024 and 2025
                                      Youth Ambassadors pages (run 2019 to 2025 with --use-include; see the note in each)
 tools/ya-program.php                 one-time script that put the new layout on the Youth Ambassadors Program page
+tools/photo-metadata.php             one-time script that takes the camera data out of the photos already in the
+                                     Media Library, with a backup (October 2026 audit; see docs/photos.md)
+tools/donate-button.php              one-time script that serves the PayPal donate button's picture from the Media
+                                     Library and blanks PayPal's tracking pixel (October 2026 audit)
 ```
 
 ### Data the plugin stores
@@ -143,6 +149,7 @@ tools/ya-program.php                 one-time script that put the new layout on 
 | Transient `bx_css_err_<user id>` | Why a Site CSS save was refused, kept for one minute to show on the next screen. |
 | Posts with slugs `news-and-media-YYYY` | The yearly archive pages (ordinary posts, created automatically). |
 | Folder `css/history/` | Site CSS version history. |
+| Post meta `_bx_donate_button` | Marks the donate button's picture in the Media Library (set by `tools/donate-button.php`, so a second run finds it). |
 | Browser `localStorage` key `bx-theme` | A visitor's dark-mode choice, on their own device. |
 
 Deactivating the plugin deletes nothing. Event lists then show as plain shortcodes and the site falls back to the theme's own look.

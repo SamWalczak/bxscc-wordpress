@@ -2,7 +2,8 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.75
+ * Version: 1.76
+ * Update URI: false
  */
 if (!defined('ABSPATH')) { exit; }
 
@@ -1211,6 +1212,36 @@ add_action('wp_enqueue_scripts', function () {
     }
     if (!$fa) { wp_dequeue_style('wdwt_font-awesome'); }
 }, 100);
+/* 14b. jQuery, jQuery Migrate and the theme's javascript.js load at the end of the page instead of in <head> on every
+        page without the theme's banner slideshow. In <head> they held up the first paint: about 0.25 s on a phone's
+        first visit (October 2026 audit, measured on 8 page types); nothing before the end of the page needs them
+        (checked on every page of the site), and they still run before this plugin's own scripts that use jQuery
+        (blocks 3f and 3g print after them). Pages with the slideshow (the home page) keep them in <head>: the
+        slideshow's script needs jQuery while the page loads. WordPress itself puts them back in <head> if a script
+        printed there needs them. They also stay in <head> on every page while a theme setting writes a script into the
+        page (the "Latest posts" ticker, or code pasted under the theme's Integration or Advertising settings), and on
+        a page whose text, or a widget's, has a script written into it: none of these is on today. */
+add_action('wp_enqueue_scripts', function () {
+    global $wdwt_front, $wp_query;
+    if (!is_object($wdwt_front) || !method_exists($wdwt_front, 'get_param')) { return; }   // another theme: as it was
+    $show = $wdwt_front->get_param('show_slider');
+    if (is_array($show)) { $show = $show[0]; }
+    // the theme's own test for printing the slideshow (functions.php, wdwt_scripts_front)
+    if ($show != 'Hide Slider' && ((is_front_page() && $show == 'Only on Homepage') || $show == 'On all the pages and posts')) { return; }
+    // the theme's own tests for printing the ticker (front_params_output.php, header_latest_posts) and pasted code
+    // (WDWT_front_params_output.php: integration_body, integration_top, integration_bottom, head_ and bottom_advertisment)
+    if (($wdwt_front->get_param('latest_posts_enable') && $wdwt_front->get_param('latest_posts_count') > 0)
+        || $wdwt_front->get_param('integrate_body_enable') || $wdwt_front->get_param('integrate_singletop_enable', false)
+        || $wdwt_front->get_param('integrate_singlebottom_enable', false)
+        || $wdwt_front->get_param('integration_head_adsense_type') == 'adsens' || $wdwt_front->get_param('integration_bottom_adsense_type') == 'adsens') { return; }
+    foreach ((array) (is_object($wp_query) ? $wp_query->posts : array()) as $p) {
+        if (is_object($p) && stripos((string) $p->post_content, '<script') !== false) { return; }
+    }
+    foreach (array('widget_custom_html', 'widget_text', 'widget_block') as $o) {
+        if (stripos(serialize(get_option($o)), '<script') !== false) { return; }
+    }
+    foreach (array('jquery', 'jquery-core', 'jquery-migrate', 'wdwt_custom_js') as $h) { wp_scripts()->add_data($h, 'group', 1); }
+}, 101);
 
 /* 15. Photos in page content come in the size they are shown at. WordPress does this for images inserted with
        Add Media; hand-written image tags named one fixed file, often far larger than shown. Each such image gets a
@@ -1499,3 +1530,155 @@ add_filter('image_editor_output_format', function ($formats) {
     foreach (array('image/jpeg', 'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence') as $m) { $formats[$m] = 'image/webp'; }
     return $formats;
 });
+
+/* 22. Camera data out of the photo files pages show. WordPress keeps a photo's camera data (EXIF, XMP, IPTC: make
+       and model, settings, the maker's private notes, and the location where the phone or camera recorded one) in
+       every copy it makes with ImageMagick, as the server does. On this site that was 10 to 43 KB in each copy, more
+       than the picture itself in the small ones, and a location for anyone who downloads a photo. After WordPress
+       makes an upload's copies, this takes that data out of the copies, and out of the full-size photo when WordPress
+       made it (scaled or converted to WebP), and keeps the colour profile. Only the data blocks are removed: the
+       picture data is copied byte for byte, so the photos look exactly the same. The uploaded file itself is never
+       touched (it stays as the "original image"); so when WordPress shows the uploaded file as the full-size photo
+       (one small enough that it was not scaled or converted), that file keeps its data, and so do the files the Media
+       Library's image editor saves. tools/photo-metadata.php takes it out of those too, keeping a backup. A file is left as it is when anything about it is unexpected, or
+       when its data says to turn the photo or to read its colours differently (orientation or colour space set), or
+       when it holds a second picture (a phone's HDR photo: its brightness map is described in that data), since
+       taking the data out could change how it shows. tools/photo-metadata.php does the same once for the photos already
+       in the library. */
+function bx_tiff_info($t) {   // orientation, location present, colour space, from an EXIF block (TIFF format)
+    if (substr($t, 0, 6) === "Exif\0\0") { $t = substr($t, 6); }
+    $n = strlen($t);
+    $bo = substr($t, 0, 2);
+    if ($bo === 'II') { $s = 'v'; $l = 'V'; } elseif ($bo === 'MM') { $s = 'n'; $l = 'N'; } else { return null; }
+    $u = function ($f, $off, $len) use ($t, $n) { return ($off >= 0 && $off + $len <= $n) ? unpack($f, substr($t, $off, $len))[1] : null; };
+    $ifd = function ($off) use ($u, $s) {   // tag => where its value (or the value's offset) is
+        $tags = array();
+        $count = $u($s, (int) $off, 2);
+        for ($k = 0; $count !== null && $k < min($count, 512); $k++) {
+            $tag = $u($s, $off + 2 + 12 * $k, 2);
+            if ($tag === null) { break; }
+            $tags[$tag] = $off + 2 + 12 * $k + 8;
+        }
+        return $tags;
+    };
+    $first = $u($l, 4, 4);
+    if ($first === null) { return null; }
+    $info = array('orientation' => 0, 'gps' => false, 'colorspace' => 0);
+    $ifd0 = $ifd($first);
+    if (isset($ifd0[0x0112])) { $info['orientation'] = (int) $u($s, $ifd0[0x0112], 2); }
+    $info['gps'] = isset($ifd0[0x8825]);
+    if (isset($ifd0[0x8769])) {
+        $exif = $ifd((int) $u($l, $ifd0[0x8769], 4));
+        if (isset($exif[0xA001])) { $info['colorspace'] = (int) $u($s, $exif[0xA001], 2); }
+    }
+    return $info;
+}
+function bx_photo_without_metadata($b) {   // array(new bytes or null, info) for a JPEG or WebP file's bytes
+    $info = array('type' => '', 'exif' => null, 'icc' => false, 'mpf' => false, 'dropped' => 0, 'bad' => false);
+    $n = strlen($b);
+    if (substr($b, 0, 3) === "\xFF\xD8\xFF") {
+        $info['type'] = 'jpeg';
+        $out = "\xFF\xD8"; $i = 2;
+        while (true) {
+            while ($i + 1 < $n && $b[$i] === "\xFF" && $b[$i + 1] === "\xFF") { $i++; }   // fill bytes
+            if ($i + 4 > $n || $b[$i] !== "\xFF") { $info['bad'] = true; return array(null, $info); }
+            $m = ord($b[$i + 1]);
+            if ($m === 0xDA) { $out .= substr($b, $i); break; }   // start of the picture data: copied as it is, to the end
+            if ($m === 0xD8 || $m === 0xD9 || $m === 0x01 || ($m >= 0xD0 && $m <= 0xD7)) { $info['bad'] = true; return array(null, $info); }
+            $len = unpack('n', substr($b, $i + 2, 2))[1];
+            if ($len < 2 || $i + 2 + $len > $n) { $info['bad'] = true; return array(null, $info); }
+            $data = substr($b, $i + 4, $len - 2);
+            if ($m === 0xE2 && strncmp($data, "ICC_PROFILE\0", 12) === 0) { $info['icc'] = true; }
+            if ($m === 0xE2 && strncmp($data, "MPF\0", 4) === 0) { $info['mpf'] = true; }   // a second picture follows (a phone's HDR gain map)
+            if ($m === 0xE1 && $info['exif'] === null && strncmp($data, "Exif\0\0", 6) === 0) { $info['exif'] = bx_tiff_info($data); }
+            if ($m === 0xE1 || $m === 0xED || $m === 0xFE) { $info['dropped'] += 2 + $len; }   // EXIF and XMP, IPTC, comments
+            else { $out .= substr($b, $i, 2 + $len); }
+            $i += 2 + $len;
+        }
+        return array($info['dropped'] ? $out : null, $info);
+    }
+    if ($n >= 20 && substr($b, 0, 4) === 'RIFF' && substr($b, 8, 4) === 'WEBP') {
+        $info['type'] = 'webp';
+        $out = ''; $i = 12; $vp8x = null;
+        if (unpack('V', substr($b, 4, 4))[1] + 8 !== $n) { $info['bad'] = true; return array(null, $info); }
+        while ($i < $n) {
+            if ($i + 8 > $n) { $info['bad'] = true; return array(null, $info); }
+            $id = substr($b, $i, 4); $len = unpack('V', substr($b, $i + 4, 4))[1];
+            $size = 8 + $len + ($len & 1);
+            if ($i + 8 + $len > $n) { $info['bad'] = true; return array(null, $info); }
+            if ($id === 'ICCP') { $info['icc'] = true; }
+            if ($id === 'EXIF' && $info['exif'] === null) { $info['exif'] = bx_tiff_info(substr($b, $i + 8, $len)); }
+            if ($id === 'EXIF' || $id === 'XMP ') { $info['dropped'] += min($size, $n - $i); }
+            else { if ($id === 'VP8X') { $vp8x = strlen($out); } $out .= substr($b, $i, $size); }
+            $i += $size;
+        }
+        if (!$info['dropped']) { return array(null, $info); }
+        if ($vp8x !== null) { $out[$vp8x + 8] = chr(ord($out[$vp8x + 8]) & ~0x0C); }   // the "has EXIF" and "has XMP" flags
+        return array('RIFF' . pack('V', 4 + strlen($out)) . 'WEBP' . $out, $info);
+    }
+    return array(null, $info);
+}
+/* Takes the camera data out of one file. Returns what happened: 'clean' (nothing to take out), 'stripped', or 'kept'
+   with the reason; 'gps' tells whether the file had a location. With $write false it only reports. */
+function bx_strip_photo_file($path, $write = true) {
+    $r = array('result' => 'kept', 'why' => '', 'before' => 0, 'after' => 0, 'gps' => false);
+    if (!is_file($path) || !is_readable($path)) { $r['why'] = 'missing'; return $r; }
+    $r['before'] = $r['after'] = (int) filesize($path);
+    if ($r['before'] > 64 * 1024 * 1024) { $r['why'] = 'too large'; return $r; }
+    $b = file_get_contents($path);
+    list($new, $info) = bx_photo_without_metadata($b);
+    $exif = $info['exif'];
+    $r['gps'] = !empty($exif['gps']);
+    if ($info['type'] === '') { $r['why'] = 'not a JPEG or WebP file'; return $r; }
+    if ($info['bad']) { $r['why'] = 'unexpected file structure'; return $r; }
+    if ($new === null) { $r['result'] = 'clean'; return $r; }
+    if ($info['mpf']) { $r['why'] = 'more than one picture'; return $r; }   // an HDR photo's gain map is described in its XMP
+    if ($exif && $exif['orientation'] > 1) { $r['why'] = 'orientation set'; return $r; }
+    if ($exif && $exif['colorspace'] && $exif['colorspace'] !== 1 && !$info['icc']) { $r['why'] = 'colour space set'; return $r; }
+    $a = @getimagesizefromstring($b); $z = @getimagesizefromstring($new);
+    if (!$a || !$z || $a[0] !== $z[0] || $a[1] !== $z[1] || $a[2] !== $z[2]) { $r['why'] = 'check failed'; return $r; }
+    $r['result'] = 'stripped'; $r['after'] = strlen($new);
+    if (!$write) { return $r; }
+    $tmp = $path . '.bx-tmp';
+    $mode = fileperms($path) & 0777; $time = filemtime($path);
+    if (file_put_contents($tmp, $new) !== strlen($new) || !@chmod($tmp, $mode) || !@rename($tmp, $path)) {
+        @unlink($tmp);
+        $r['result'] = 'kept'; $r['why'] = 'could not write'; $r['after'] = $r['before'];
+        return $r;
+    }
+    @touch($path, $time);
+    clearstatcache(true, $path);
+    return $r;
+}
+/* The files of one photo that pages show: its copies, and the full-size photo when WordPress made it (the attachment
+   has an "original image"). With $all, the full-size photo always (photos uploaded before WordPress kept originals). */
+function bx_photo_shown_files($id, $meta, $all = false) {
+    $main = get_attached_file($id);
+    if (!$main || !is_array($meta)) { return array(); }
+    $files = array();
+    if ($all || !empty($meta['original_image'])) { $files['full'] = $main; }
+    foreach ((array) (isset($meta['sizes']) ? $meta['sizes'] : array()) as $name => $s) {
+        if (!empty($s['file'])) { $files[$name] = path_join(dirname($main), $s['file']); }
+    }
+    return $files;
+}
+/* Records a changed file's new size under every name that uses it (two copies can share one file). */
+function bx_photo_record_size(&$meta, $names, $size) {
+    foreach ($names as $name) {
+        if ($name === 'full') { $meta['filesize'] = $size; } elseif (isset($meta['sizes'][$name])) { $meta['sizes'][$name]['filesize'] = $size; }
+    }
+}
+add_filter('wp_generate_attachment_metadata', function ($meta, $id) {
+    try {
+        if (!wp_attachment_is_image($id)) { return $meta; }   // a PDF's preview pictures: left as WordPress made them
+        $byfile = array();
+        foreach (bx_photo_shown_files($id, $meta) as $name => $file) { $byfile[$file][] = $name; }
+        foreach ($byfile as $file => $names) {
+            $r = bx_strip_photo_file($file);
+            if ($r['result'] === 'stripped') { bx_photo_record_size($meta, $names, $r['after']); }
+        }
+    } catch (\Throwable $e) {
+        // leave the photo as WordPress made it
+    }
+    return $meta;
+}, 20, 2);

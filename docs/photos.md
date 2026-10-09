@@ -59,6 +59,23 @@ A JPEG photo uploaded to the Media Library (or an iPhone HEIC photo, which WordP
 - **PNG files stay PNG**: they are usually logos, screenshots or graphics with sharp edges or transparency, which lossy WebP would soften.
 - If the server's image library cannot write WebP, uploads work exactly as before.
 
+## Camera data
+
+Code: block 22 of `bxscc-wordpress-enhancements.php` (new uploads, since 1.76); `tools/photo-metadata.php` (the photos already in the library, once).
+
+Phones and cameras write data into each photo file: make and model, settings, the maker's private notes, often the place the photo was taken, sometimes a small preview. WordPress copies it into every copy it makes. On this site that was 10 to 43 KB in each copy, more than the picture itself in the smallest ones, and a location for anyone who downloads a photo.
+
+After WordPress has made an upload's copies, block 22 takes that data out:
+
+- **Removed:** in JPEG files, the EXIF and XMP blocks (APP1), IPTC and Photoshop data (APP13) and comments; in WebP files, the EXIF and XMP chunks.
+- **Kept:** the colour profile, the blocks that say how to read the colours (JFIF, Adobe), and the picture data, copied byte for byte. Photos look exactly the same: checked by decoding test photos before and after, and by screenshots in Chromium.
+- **Which files:** every copy WordPress made, and the full-size photo when WordPress made it (scaled down to 2560 pixels, or converted to WebP, which on this site happens to every JPEG upload). The upload itself is never touched: it stays as the "original image" with its data, for a full-quality download. So when WordPress shows the upload itself as the full-size photo (a WebP under 2560 pixels, for example), that file keeps its data, and so do files saved by the Media Library's image editor (Edit Image). `tools/photo-metadata.php` covers both.
+- **Left as they are:** a file whose data says to turn the photo (orientation), or to read its colours a particular way without a colour profile (colour space); a file that holds a second picture (a phone's HDR photo, whose brightness map is described in its XMP); a file with anything unexpected in its structure. Taking the data out of these could change how they show. A PDF's preview pictures are also left as WordPress made them.
+- **Safe writing:** the new file is written next to the old one, checked to have the same dimensions, and renamed over it, keeping its permissions and date; any failure leaves the old file in place. The recorded file sizes (Media Library: File size) are updated, under every size name that shares a file.
+- **What is lost:** camera details, and any credit or copyright text written into the files the site shows. WordPress reads the title, caption, credit and copyright from the upload before this runs, so whatever it records from them stays, and the "original image" keeps everything.
+
+**The photos already in the library.** `tools/photo-metadata.php`, run with WP-CLI (the commands are at the top of the file). The dry run reports how many files carry camera data and the MB to save, the files that will be left as they are and why, and every file with a location, including "original image" files, which are only reported, never changed. The run copies every file it changes to `~/bx-photo-metadata-backup/` first (same folders as in uploads, checked by md5), then changes it and updates the recorded sizes; to undo one, copy it back. Unlike block 22, it also does full-size files that are the upload itself (photos uploaded before WordPress kept originals, or never scaled or converted): for those, once the backup is deleted, the site keeps no copy of the camera data. It can run again at any time (files already done count as "clean"), for example after editing photos in the image editor.
+
 ## Photos appear whole
 
 Browsers draw a photo from the top down as its bytes arrive, which looked unfinished. Every photo in page content, events and sidebar widgets (block 15 marks them `bx-fade`) is kept out of sight until it has arrived whole, then appears at once. If it is still downloading after 0.3 seconds, its space shows the banner's loading look: a navy box with a small gold spinner, the same size as the photo. A photo already in the browser's cache, or one that arrives within 0.3 seconds, never shows the box. Its space is reserved from the start, so nothing moves, and once loaded the page looks exactly as before. Without scripts, photos show as they always did (the rule applies only under `html.bx-js`, set by the first script in `<head>`). The spinner turns slowly for visitors who ask their system for reduced motion.
