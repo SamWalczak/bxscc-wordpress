@@ -13,7 +13,7 @@ Both `wp-content` folders keep their names on the server: the plugin's documenta
 
 ## Features
 
-### Plugin: BXSCC WordPress Enhancements 1.79
+### Plugin: BXSCC WordPress Enhancements 1.80
 
 It has no settings screen of its own (besides the reports under Events, Appearance > Site CSS and Tools > Link check). Install it, and these features are on:
 
@@ -21,14 +21,14 @@ It has no settings screen of its own (besides the reports under Events, Appearan
 |---|---|---|
 | **Events** | Events are small records (title, dates, time or note, location, description) in their own table. They appear in reusable *sections* on any page, and on automatic yearly archive pages. Dates can be days, months, seasons or years, single or spans. | [docs/events.md](docs/events.md) |
 | **Site CSS** | All site styling lives in two files in the plugin, `css/components.css` and `css/theme-fixes.css`, editable from **Appearance > Site CSS** with a saved, comparable, restorable history of every version. Dashboard editing of PHP files is switched off. | [docs/site-css.md](docs/site-css.md) |
-| **Banner** | Fixes and improvements to the theme's home page slideshow: random start slide, fast loading in viewing order, each screen downloading a photo size it needs, a placeholder while a photo loads, true crossfades, arrows that never freeze or fight the timer, and uncropped photos in the lightbox, downloaded after everything else. | [docs/banner.md](docs/banner.md) |
+| **Banner** | Fixes and improvements to the theme's home page slideshow: random start slide, fast loading in viewing order, each screen downloading a photo size it needs, a placeholder while a photo loads, true crossfades, arrows that never freeze or fight the timer, uncropped photos in the lightbox, downloaded after everything else, and a description of each slide for screen readers. | [docs/banner.md](docs/banner.md) |
 | **Photos** | Photo grids for page content, a lightbox for every content photo (grouped, keyboard and swipe navigation, captions), hand-written photo tags served in the size they are shown at, photos that appear whole (with the banner's loading box while one downloads) instead of drawing from the top down, new uploads stored as WebP (the uploaded file kept as the original), and camera data (including locations) taken out of the photo files pages show, without changing a pixel. | [docs/photos.md](docs/photos.md) |
 | **Dead links** | Every link to another site is checked weekly. One that fails three weekly checks in a row triggers an email; the report then offers the Internet Archive's copy of the page from around when the link was added (swapped in as pages are built), a new address (written into every page and event that has the old one), or keeping the original. A setting makes the archive swap automatic. Working pages the Archive has never captured are sent to its Save Page Now service. Report and settings: **Tools > Link check**. | [docs/links.md](docs/links.md) |
 | **Video previews** | YouTube videos show a thumbnail and load the player (privacy-enhanced mode) only when clicked. | [docs/video-previews.md](docs/video-previews.md) |
-| **Header and footer** | Two-line site title, correct social-icon labels (including a Discord icon), current copyright year with a bilingual line. | [docs/header-and-footer.md](docs/header-and-footer.md) |
+| **Header and footer** | Two-line site title, the logo described by the committee's name, correct social-icon labels (including a Discord icon), current copyright year with a bilingual line. | [docs/header-and-footer.md](docs/header-and-footer.md) |
 | **Dark mode** | A moon button in the header switches the site to dark colors; the choice is remembered on that device without cookies, with no flash of light colors. | [docs/dark-mode.md](docs/dark-mode.md) |
 | **Layout and navigation** | Sidebar and content end level, parent-page links in the phone menu, year lists by decade and a previous / all / next bar on yearly pages (News and Events, Youth Ambassadors Program), home page tab title, a not-found page in the site's layout. | [docs/layout-and-navigation.md](docs/layout-and-navigation.md) |
-| **Page markup** | The table, grid and button-bar patterns page content uses, and the CSS classes that style them. | [docs/page-markup.md](docs/page-markup.md) |
+| **Page markup** | The table, grid and button-bar patterns page content uses, the CSS classes that style them, and underlined links in running text. | [docs/page-markup.md](docs/page-markup.md) |
 | **Fonts** | Self-hosted Open Sans (no Google Fonts requests), with fallback metrics so text does not jump. | [docs/fonts.md](docs/fonts.md) |
 | **News Magazine theme** | The theme's unused public endpoints (a lightbox with a cross-site scripting hole, draft listings, a notice handler that wrote settings for anyone) and its plugin installer are switched off from the plugin, and its layout widths are kept valid. The theme's own file edits are listed below. | [docs/news-magazine-theme.md](docs/news-magazine-theme.md) |
 | **Search and sharing** | Each page's Excerpt is its meta description; link previews (Open Graph) with a picture for every page and a default card; archive pages kept out of search; a sitemap of pages and posts only; the site's name for search results; old addresses sent on to their replacements. | [docs/search-and-sharing.md](docs/search-and-sharing.md) |
@@ -83,9 +83,9 @@ In the cPanel terminal, after uploading the ZIP from GitHub to the home folder (
    ```
    tar -czf ~/bx-before-update-$(date +%F).tgz -C ~/public_html/wp-content plugins/bxscc-wordpress-enhancements themes/news-magazine
    ```
-4. Copy the new files over the old ones. This adds and replaces files only: the server's `css/history/` stays, and a file removed from the repository has to be deleted by hand.
+4. Copy the new files over the old ones. This adds and replaces files only: the server's `css/history/` stays, and a file removed from the repository has to be deleted by hand. The backslash matters: the cPanel shell makes `cp` and `rm` ask before replacing or deleting each file, and when several commands are pasted at once the next line is taken as the answer (anything but "y" means no, so nothing is copied).
    ```
-   cp -R ~/bxscc-wordpress-main/wp-content/. ~/public_html/wp-content/
+   \cp -Rf ~/bxscc-wordpress-main/wp-content/. ~/public_html/wp-content/
    ```
 5. Check that no file can be changed by other accounts on the server (`-perm /022` finds files writable by the group or by others). It should print nothing; run `chmod go-w` on anything it lists.
    ```
@@ -98,7 +98,7 @@ In the cPanel terminal, after uploading the ZIP from GitHub to the home folder (
 7. If theme files changed, Wordfence reports them as modified: check that they are the intended changes and mark each "Ignore until file changes". Do not let it "Repair" them, which puts back the original theme files.
 8. Delete the unpacked copy and the ZIP:
    ```
-   rm -r ~/bxscc-wordpress-main ~/bxscc-wordpress-main.zip
+   \rm -rf ~/bxscc-wordpress-main ~/bxscc-wordpress-main.zip
    ```
 
 More on updating, the page cache and troubleshooting: [docs/maintenance.md](docs/maintenance.md).

@@ -54,6 +54,16 @@ html[data-theme="dark"] .bx-theme-toggle button:hover { background: #8fc1ff; col
 :is(.entry, .entry-content) h3 a { color: var(--bx-link); }
 :is(.entry, .entry-content) h3 { font-size: 1.15em; text-align: center !important; margin: 0; }
 :is(.entry, .entry-content) p { line-height: 1.6; }
+/* links in running text are underlined, so they do not rely on color alone (the link blue is only 1.69:1 against the
+   text color; WCAG 1.4.1). Left as they were: links holding a photo or bold text (a bold title already stands out),
+   links in headings, and the year index, year bar and sub-page buttons. Browsers older than 2022-2023 (no :has())
+   skip both rules and show links as before. */
+:is(.entry, .entry-content) :is(p, li, figcaption, dd, blockquote, td) a:not(:has(img, strong, b)):not(:is(h1, h2, h3, h4, h5, h6, .bx-years, .bx-year-nav, .bx-subnav) a) {
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
+}
+:is(.entry, .entry-content) :is(p, li, figcaption, dd, blockquote, td) a:not(:has(img, strong, b)):not(:is(h1, h2, h3, h4, h5, h6, .bx-years, .bx-year-nav, .bx-subnav) a):hover {
+  text-decoration-thickness: 2px;
+}
 
 @media (max-width: 599px) {
   :is(.entry, .entry-content) td, :is(.entry, .entry-content) td:first-child { display: block; width: auto; }

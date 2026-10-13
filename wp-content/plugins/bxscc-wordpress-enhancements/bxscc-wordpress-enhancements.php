@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BXSCC WordPress Enhancements
  * Description: Site customizations for bxscc.org: dark mode, menus, home page photo grid and lightbox, banner behavior, fonts, the Site CSS editor (Appearance > Site CSS) and the Events system (Events menu). PHP is edited only through cPanel.
- * Version: 1.79
+ * Version: 1.80
  * Update URI: false
  */
 if (!defined('ABSPATH')) { exit; }
@@ -141,6 +141,9 @@ add_action('wp_footer', function () {
   // any other photo inside page content becomes a lightbox link; photos in the same table cell are one group
   document.querySelectorAll(".entry img").forEach(function (im) {
     if (im.closest(".bx-grid, a.bx-zoom, #sidebar1") || im.classList.contains("bx-nozoom")) { return; }   // bx-nozoom: photos too small to enlarge
+    // not a photo: an image inside a form (PayPal's invisible pixel by the donate button) or one written into the page
+    // itself; wrapped, it became an empty link that keyboard users had to tab through
+    if (im.closest("form") || /^data:/i.test(im.getAttribute("src") || "")) { return; }
     var a = im.closest("a");
     var isImageLink = a && /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(a.getAttribute("href") || "");
     if (a && !isImageLink) { return; }                     // linked to a web page (logos, etc.): leave alone
@@ -423,6 +426,8 @@ add_action('template_redirect', function () {
         $html = $page;
         $html = str_replace('title="Pinterest"', 'title="Discord" aria-label="Discord"', $html);
         $html = str_replace('title="LinkEdin"', 'title="LinkedIn" aria-label="LinkedIn"', $html);
+        // the logo's description: the committee's name (the theme writes alt="logo")
+        $html = preg_replace('#(<img id="site-title"[^>]*?) alt="logo"#', '$1 alt="' . esc_attr(get_bloginfo('name')) . '"', $html, 1);
         // footer: current year, Baltimore Sister Cities link, Chinese line (all inside the existing copyright line)
         $y = date('Y');
         // the footer line is the theme's <span id="copyright">; searching the whole page for the last "Copyright" also
@@ -497,6 +502,16 @@ add_action('template_redirect', function () {
                     $tag = $m[0][$i][0];
                     $extra = $sets[$i] !== '' ? ' data-srcset="' . esc_attr($sets[$i]) . '" sizes="' . BX_BANNER_SIZES . '"' : '';
                     $deferred = str_replace(' src="', $extra . ' src="' . $placeholder . '" data-src="', $tag);
+                    // the slide's description for screen readers (the theme writes the slide with no alt at all): its
+                    // Alt Text in the Media Library (Media > Library > carousel2-cropped > Alternative Text), else its Caption
+                    $sid = bx_upload_attachment_id($urls[$i]);
+                    $alt = $sid ? trim(wp_strip_all_tags((string) get_post_meta($sid, '_wp_attachment_image_alt', true))) : '';
+                    if ($alt === '' && $sid) { $alt = trim(wp_strip_all_tags((string) wp_get_attachment_caption($sid))); }
+                    if ($alt !== '') {
+                        $deferred = preg_match('#\salt="[^"]*"#', $deferred)
+                            ? preg_replace('#\salt="[^"]*"#', ' alt="' . esc_attr($alt) . '"', $deferred, 1)
+                            : preg_replace('#^<img\b#', '<img alt="' . esc_attr($alt) . '"', $deferred, 1);
+                    }
                     $segment = substr_replace($segment, $deferred, $m[0][$i][1], strlen($tag));
                     // block 3i: a slide whose uncropped photo is on the server links to it, for the lightbox; the theme's
                     // empty link around the slide (removed by block 3c otherwise) becomes that link
@@ -505,7 +520,9 @@ add_action('template_redirect', function () {
                     if ($apos !== false && trim(substr($segment, $apos + 11, $m[0][$i][1] - $apos - 11)) === '') {
                         $aid = bx_upload_attachment_id($urls[$i]);   // the slide's Caption in the Media Library is the lightbox caption
                         $cap = $aid ? trim(wp_strip_all_tags((string) wp_get_attachment_caption($aid))) : '';
-                        $segment = substr_replace($segment, '<a href="' . esc_url($orig) . '" class="bx-zoom bx-slide-original" aria-label="Open the full photo"'
+                        // the link is named by the slide's description (as content photo links are); "Open the full photo"
+                        // only for a slide that has none
+                        $segment = substr_replace($segment, '<a href="' . esc_url($orig) . '" class="bx-zoom bx-slide-original"' . ($alt === '' ? ' aria-label="Open the full photo"' : '')
                             . ($cap !== '' ? ' data-caption="' . esc_attr($cap) . '"' : '') . '>', $apos, 11);
                         $originals++;
                     }

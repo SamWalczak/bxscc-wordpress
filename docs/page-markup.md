@@ -81,6 +81,10 @@ Without photos (2019 page, plugin 1.71): the title and years of study go in `<di
 | `nav.bx-year-nav` | Yearly pages (added automatically) | Three connected segments: previous, all, next. |
 | `div.bx-subnav` with links; current page's link gets `class="is-current"` | 2013 Trade Mission pages | Five connected buttons; stacked on phones. Hover and current page are navy with gold text. |
 
+## Links in text
+
+Links inside running text (paragraphs, list items, captions, quotes and table cells in the content area) are underlined (`components.css`, since 1.80): the link blue is only 1.69:1 against the text color, too close to tell apart by color alone (WCAG 1.4.1). Links that hold a photo or bold text, links in headings, the year index, the year bar and the sub-page buttons are left as they were. The underline is 1px, 2px below the text, and 2px thick on hover. Browsers from before 2022 to 2023, which lack `:has()`, show links without the underline, as before.
+
 ## Other
 
 | Class | Effect |

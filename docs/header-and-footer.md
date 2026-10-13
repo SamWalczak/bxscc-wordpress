@@ -27,6 +27,8 @@ The theme draws the Facebook and LinkedIn icons with the Font Awesome icon font:
 
 The logo below the icons is 104px wide, exactly the width of the three squares and their gaps (until 1.55 it was 105px, 1px wider; the 100 x 96 file would be 104.17px wide at 100px tall, and `object-fit: cover` trims the difference). On phones the logo is centered under the title instead and keeps its 84 x 80 size.
 
+The theme writes the logo with the description `alt="logo"`; since 1.80 the plugin replaces it with the site's name (Settings > General > Site Title), "Baltimore-Xiamen Sister City Committee", which is what a screen reader should announce there.
+
 Each icon is centered in its square by the square itself (a flex box), and each mask is cropped to its glyph's outline, so the three glyphs share the same center whatever font metrics the browser has. Until 1.54 the Facebook and LinkedIn glyphs were placed by font metrics (as the icon font had placed them) and the Discord one by `vertical-align: middle`, which left the Discord logo about 1.5px low.
 
 ## Dark-mode button
