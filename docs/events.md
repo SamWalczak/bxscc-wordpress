@@ -39,7 +39,8 @@ Seasons are fixed ranges close to the solstices and equinoxes: spring March 20 t
 
 For filtering and ordering, an event covers everything from the first day of its earliest part to the last day of its latest part:
 
-- **Ordering**: by that last day (the day the event *closes*), newest first on archive pages and in Recent; soonest first in Upcoming. Ties keep the order the events were entered.
+- **Ordering**: by that last day (the day the event *closes*), newest first on archive pages and in Recent; soonest first in Upcoming, after any pinned events. Ties keep the order the events were entered.
+- **Pinned** (since 1.82): an event can be pinned to the top of Upcoming with a position (1 first, up to 99). Pinned events lead every Upcoming section in position order (ties by last day), and the rest follow soonest first. Pinning changes nothing else: a pinned event still appears only while it is upcoming, and in Recent, yearly pages and hand-picked sections it sits where its dates put it. The pin stays on the event after it ends, so it is pinned again if its dates are moved forward (the monthly meetings entry each year, for example). Stored in the `pin` column (0 = not pinned).
 - **Upcoming**: an event is upcoming until its last day has passed.
 - **Years**: an event appears on every yearly page its range touches (an event from Fall 2022 to Spring 2024 is on 2022, 2023 and 2024).
 
@@ -51,7 +52,7 @@ A section is a heading plus a rule that picks events. Sections are kept in the o
 
 | Rule | Shows | Order |
 |---|---|---|
-| Upcoming | Every event whose last day is today or later | Soonest first |
+| Upcoming | Every event whose last day is today or later | Pinned events first, by position (1 first); then the rest soonest first |
 | Range | Events that closed between *N* and *M* months ago (0 and 4 = the last four months) | Newest first |
 | Hand-picked | Only the events ticked in the section editor | Newest first |
 
@@ -87,6 +88,7 @@ Menu **Events**, available to Editors and Administrators (capability `edit_pages
 - **All Events**: newest first, 50 per page, with a text search over titles and descriptions and a year filter. Upcoming events are marked.
 - **Add Event / Edit**: title; dates; Time or note and Location as one-line editors with Bold, Italic and Link buttons (Enter makes a line break); the description editor. Help text on the form explains each field, including what to do when exact dates are not known.
   - **Dates** (since 1.81): each date is a box headed *Date*. Its first line, on its own and labeled, asks *How much of this date is known?* (The exact day, Only the month, Only the season, Only the year); the boxes for that answer appear under it, each labeled (Month, Day, Season, Year). A box under the date, *It runs over a stretch of time (a trip, an exhibit): add an end date*, opens an indented *End date* with the same two lines, and the first heading becomes *Start date*. "+ Another date" adds a separate date (May 15th and May 17th); *Remove this date* removes one (the last remaining date stays). Before 1.81 the kind was an unlabeled first dropdown reading "Day", easy to take for the day of the month.
+  - **Pin** (since 1.82): *Pin to the top of Upcoming Events* with a *Position* box (shown once ticked; it suggests the next free position), and under it the events pinned now, in order, linked to their edit screens. All Events tags a pinned upcoming event "pinned *n*".
   - **Description** (since 1.81): the standard WordPress editor, opening in **Visual** (formatted, like a word processor) whichever tab was used last elsewhere: WordPress remembers the last tab across all its editors, so after working in **Code** on a page, event descriptions used to open as raw HTML. Descriptions with layout code (a `div`, `figure`, `table`, `iframe`, `video`, `audio`, `section`, `script` or `style` tag: the photo grids and video previews, 8 events as of November 2026) open in **Code** instead, with a note, because Visual can rearrange that markup. The editor runs with `wpautop` off: descriptions are stored with their `<p>` tags (as all 221 migrated events are), so Visual and Code show the same content, Code shows the `<p>` tags, and saving an unchanged description writes back exactly the same text (checked on a plain and a photo-grid event). A description with no `<p>` at all (text typed into Code) is shown with paragraphs added, as on the page. Line ends sent as `\r\n` by the browser are stored as `\n`. Paragraphs in Visual get a 1em gap (`content_style`), which the site's editor styles otherwise leave out.
 - **Sections**: the list of sections with the shortcode to paste for each, and an editor for heading, code name, rule, limit, empty message and the hand-picked events (with a filter box).
 - **How it works**: the same guidance in plain language for whoever maintains the site next.
@@ -99,7 +101,7 @@ On a site with a full-page cache (bxscc.org uses an Nginx proxy cache), saving o
 
 ## Upgrades
 
-The table layout is versioned (`BX_EV_DB_VERSION`). When the code's version differs from the stored option, the table is updated with WordPress's `dbDelta` on the next request. Version 3 widened Time or note and Location to 1,000 characters so they can hold links.
+The table layout is versioned (`BX_EV_DB_VERSION`). When the code's version differs from the stored option, the table is updated with WordPress's `dbDelta` on the next request. Version 3 widened Time or note and Location to 1,000 characters so they can hold links. Version 4 (1.82) added `pin` (`smallint unsigned`, default 0), so every existing event starts unpinned.
 
 ## Migration
 

@@ -6,7 +6,7 @@
  */
 if (!defined('ABSPATH')) { exit; }
 
-define('BX_EV_DB_VERSION', '3');   // 3: time and location hold short formatted text (links, bold, italic, line breaks)
+define('BX_EV_DB_VERSION', '4');   // 3: time and location hold short formatted text (links, bold, italic, line breaks); 4: pin
 
 /* ============================================================================================
    1. Storage: one table, one row per event.
@@ -17,6 +17,7 @@ define('BX_EV_DB_VERSION', '3');   // 3: time and location hold short formatted 
       start_date / sort_date  the earliest and the latest day any part covers. Lists filter and order by
                 these: an event "closes" on sort_date. A season runs from its first day to its last.
       y1 / y2   the first and last year the event touches, so a year page can find it quickly.
+      pin       0, or the event's place at the top of Upcoming lists (1 first); see bx_ev_section_events().
    ============================================================================================ */
 function bx_ev_table() { global $wpdb; return $wpdb->prefix . 'bx_events'; }
 
@@ -36,6 +37,7 @@ function bx_ev_install() {
   y1 smallint(5) unsigned NOT NULL,
   y2 smallint(5) unsigned NOT NULL,
   body longtext NOT NULL,
+  pin smallint(5) unsigned NOT NULL DEFAULT 0,
   updated datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY sort_date (sort_date),
@@ -95,7 +97,8 @@ function bx_ev_parts_bounds($parts) {
     return array($clean, $lo, $hi);
 }
 
-/* $e: title, dates (array of parts), time, location, body. Returns the id, or 0 if no valid date. */
+/* $e: title, dates (array of parts), time, location, body, and optionally pin (left as it is when not given).
+   Returns the id, or 0 if no valid date. */
 function bx_ev_save($e, $id = 0) {
     global $wpdb;
     list($parts, $lo, $hi) = bx_ev_parts_bounds(isset($e['dates']) ? $e['dates'] : array());
@@ -106,6 +109,7 @@ function bx_ev_save($e, $id = 0) {
         'start_date' => $lo, 'sort_date' => $hi, 'y1' => (int) substr($lo, 0, 4), 'y2' => (int) substr($hi, 0, 4),
         'body' => isset($e['body']) ? $e['body'] : '', 'updated' => current_time('mysql'),
     );
+    if (isset($e['pin'])) { $row['pin'] = max(0, (int) $e['pin']); }
     if ($id) { $wpdb->update(bx_ev_table(), $row, array('id' => $id)); }
     else { $wpdb->insert(bx_ev_table(), $row); $id = (int) $wpdb->insert_id; }
     for ($y = $row['y1']; $y <= $row['y2']; $y++) { bx_ev_year_page($y); }
@@ -176,9 +180,16 @@ add_action('init', function () {
     if ($wpdb->get_var($wpdb->prepare('SELECT id FROM ' . bx_ev_table() . ' WHERE y1 <= %d AND y2 >= %d LIMIT 1', $last, $last))) { bx_ev_year_page($last); }
 });
 
+/* Pinned events that are still upcoming, in pin order: the list shown next to the Pin box. */
+function bx_ev_pinned() {
+    global $wpdb;
+    return $wpdb->get_results($wpdb->prepare('SELECT id, title, pin FROM ' . bx_ev_table() . ' WHERE pin > 0 AND sort_date >= %s ORDER BY pin ASC, sort_date ASC, id ASC', bx_ev_today()));
+}
+
 /* ============================================================================================
    2. Sections: kept in one setting. Each has a title and one rule:
-        upcoming  every event that has not closed yet, soonest first
+        upcoming  every event that has not closed yet: pinned events first, by their pin (1 first), then the
+                  rest soonest first
         range     events that closed between "newer" and "older" months ago (0 and 4 = the last 4 months)
         picked    a hand-picked list of events
       Placed on a page with [bx_section name="..."]; the same section can go on several pages.
@@ -210,7 +221,7 @@ function bx_ev_section_events($s) {
     $limit = !empty($s['limit']) ? ' LIMIT ' . (int) $s['limit'] : '';
     switch (isset($s['type']) ? $s['type'] : '') {
         case 'upcoming':
-            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE sort_date >= %s ORDER BY sort_date ASC, start_date ASC, id ASC$limit", $today));
+            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE sort_date >= %s ORDER BY pin = 0, pin ASC, sort_date ASC, start_date ASC, id ASC$limit", $today));
         case 'range':
             $newer = max(0, (int) $s['newer']); $older = max($newer, (int) $s['older']);
             $hi = $newer === 0 ? $today : bx_ev_months_ago($newer);     // closed before this day
