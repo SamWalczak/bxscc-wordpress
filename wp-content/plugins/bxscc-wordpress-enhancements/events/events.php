@@ -17,7 +17,8 @@ define('BX_EV_DB_VERSION', '4');   // 3: time and location hold short formatted 
       start_date / sort_date  the earliest and the latest day any part covers. Lists filter and order by
                 these: an event "closes" on sort_date. A season runs from its first day to its last.
       y1 / y2   the first and last year the event touches, so a year page can find it quickly.
-      pin       0, or the event's place at the top of Upcoming lists (1 first); see bx_ev_section_events().
+      pin       0, or the event's place at the top of Upcoming lists on the home page (1 first); see
+                bx_ev_section_events().
    ============================================================================================ */
 function bx_ev_table() { global $wpdb; return $wpdb->prefix . 'bx_events'; }
 
@@ -188,8 +189,8 @@ function bx_ev_pinned() {
 
 /* ============================================================================================
    2. Sections: kept in one setting. Each has a title and one rule:
-        upcoming  every event that has not closed yet: pinned events first, by their pin (1 first), then the
-                  rest soonest first
+        upcoming  every event that has not closed yet, soonest first; on the home page, pinned events come
+                  first, by their pin (1 first)
         range     events that closed between "newer" and "older" months ago (0 and 4 = the last 4 months)
         picked    a hand-picked list of events
       Placed on a page with [bx_section name="..."]; the same section can go on several pages.
@@ -221,7 +222,9 @@ function bx_ev_section_events($s) {
     $limit = !empty($s['limit']) ? ' LIMIT ' . (int) $s['limit'] : '';
     switch (isset($s['type']) ? $s['type'] : '') {
         case 'upcoming':
-            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE sort_date >= %s ORDER BY pin = 0, pin ASC, sort_date ASC, start_date ASC, id ASC$limit", $today));
+            // pins apply on the home page only; News and Events shows the same section in plain date order
+            $pins = is_front_page() ? 'pin = 0, pin ASC, ' : '';
+            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE sort_date >= %s ORDER BY {$pins}sort_date ASC, start_date ASC, id ASC$limit", $today));
         case 'range':
             $newer = max(0, (int) $s['newer']); $older = max($newer, (int) $s['older']);
             $hi = $newer === 0 ? $today : bx_ev_months_ago($newer);     // closed before this day

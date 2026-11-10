@@ -13,13 +13,13 @@ Both `wp-content` folders keep their names on the server: the plugin's documenta
 
 ## Features
 
-### Plugin: BXSCC WordPress Enhancements 1.82
+### Plugin: BXSCC WordPress Enhancements 1.83
 
 It has no settings screen of its own (besides the reports under Events, Appearance > Site CSS and Tools > Link check). Install it, and these features are on:
 
 | Feature | What it does | Docs |
 |---|---|---|
-| **Events** | Events are small records (title, dates, time or note, location, description) in their own table. They appear in reusable *sections* on any page, and on automatic yearly archive pages. Dates can be days, months, seasons or years, single or spans. Events can be pinned, in order, to the top of Upcoming. | [docs/events.md](docs/events.md) |
+| **Events** | Events are small records (title, dates, time or note, location, description) in their own table. They appear in reusable *sections* on any page, and on automatic yearly archive pages. Dates can be days, months, seasons or years, single or spans. Events can be pinned, in order, to the top of Upcoming on the home page. | [docs/events.md](docs/events.md) |
 | **Site CSS** | All site styling lives in two files in the plugin, `css/components.css` and `css/theme-fixes.css`, editable from **Appearance > Site CSS** with a saved, comparable, restorable history of every version. Dashboard editing of PHP files is switched off. | [docs/site-css.md](docs/site-css.md) |
 | **Banner** | Fixes and improvements to the theme's home page slideshow: random start slide, fast loading in viewing order, each screen downloading a photo size it needs, a placeholder while a photo loads, true crossfades, arrows that never freeze or fight the timer, uncropped photos in the lightbox, downloaded after everything else, and a description of each slide for screen readers. | [docs/banner.md](docs/banner.md) |
 | **Photos** | Photo grids for page content, a lightbox for every content photo (grouped, keyboard and swipe navigation, captions), hand-written photo tags served in the size they are shown at, photos that appear whole (with the banner's loading box while one downloads) instead of drawing from the top down, new uploads stored as WebP (the uploaded file kept as the original), and camera data (including locations) taken out of the photo files pages show, without changing a pixel. | [docs/photos.md](docs/photos.md) |

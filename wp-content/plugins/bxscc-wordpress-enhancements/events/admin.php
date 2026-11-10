@@ -163,10 +163,10 @@ function bx_ev_screen_edit() {
                   <strong>Exact dates not known yet?</strong> Choose as much as is known (for example Year 2027, or Spring 2027) and type <em>Dates to be announced</em> in <strong>Time or note</strong> below.<br>
                   Lists put events in order by their last day; a season runs from its first day to its last (fall: September 23rd to December 20th; winter starts December 21st and runs into the next year).</p></td></tr>
           <tr><th>Pin</th>
-              <td><label><input type="checkbox" id="bx_pin_on" name="pin_on" value="1"<?php checked($pin > 0); ?>> Pin to the top of Upcoming Events</label>
+              <td><label><input type="checkbox" id="bx_pin_on" name="pin_on" value="1"<?php checked($pin > 0); ?>> Pin to the top of Upcoming Events on the home page</label>
                   <span id="bx_pin_pos"<?php echo $pin > 0 ? '' : ' style="display:none;"'; ?>>&nbsp;&nbsp;<label for="bx_pin">Position</label>
                   <input type="number" id="bx_pin" name="pin" min="1" max="99" value="<?php echo (int) ($pin > 0 ? $pin : $next); ?>" style="width:64px;"> <span class="description">(1 is the top)</span></span>
-                  <p class="description">Pinned events come first in Upcoming Events, by position, and the other events follow, soonest first. A pinned event still leaves Upcoming once its last date has passed.</p>
+                  <p class="description">On the home page, pinned events come first in Upcoming Events, by position, and the other events follow, soonest first. Everywhere else (News and Events included) they stay in date order. A pinned event still leaves Upcoming once its last date has passed.</p>
                   <?php if ($pinned) {
                       echo '<p class="description" style="margin-top:6px;"><strong>Pinned now:</strong></p><ol class="bx-pinned">';
                       foreach ($pinned as $pe) {
@@ -327,7 +327,7 @@ function bx_ev_screen_sections() {
           <tr><th><label for="bx_sn">Code name</label></th><td><input id="bx_sn" name="name" class="regular-text" value="<?php echo esc_attr($editing === '_new' ? '' : $editing); ?>" placeholder="recent">
               <p class="description">Short, lowercase, no spaces. Changing it means pasting the new code onto the pages again.</p></td></tr>
           <tr><th>Shows</th><td>
-              <p><label><input type="radio" name="type" value="upcoming" <?php checked($s['type'], 'upcoming'); ?>> Upcoming events (not over yet): pinned events first, then soonest first</label></p>
+              <p><label><input type="radio" name="type" value="upcoming" <?php checked($s['type'], 'upcoming'); ?>> Upcoming events (not over yet), soonest first (on the home page, pinned events first)</label></p>
               <p><label><input type="radio" name="type" value="range" <?php checked($s['type'], 'range'); ?>> Events that ended between
                  <input type="number" name="newer" min="0" value="<?php echo (int) $s['newer']; ?>" style="width:60px;"> and
                  <input type="number" name="older" min="1" value="<?php echo (int) $s['older']; ?>" style="width:60px;"> months ago, newest first</label><br>
@@ -413,7 +413,7 @@ function bx_ev_screen_help() {
         <li><strong>Yearly pages</strong> (News and Events – 2024, 2025, and so on) are the archive: each lists every event of that year, newest first, with no setup. An event that crosses New Year appears in both years. The current year has no page; its events are on the home page and News and Events. On January 1st the year just ended gets its page, and it joins "Archives by Year" by itself.</li>
         <li><strong>Sections</strong> are the lists on the home page and News and Events. Each is a heading plus a rule: upcoming events, events that ended within a span of months (for example the last four months), or events you tick by hand. Make or change them under <strong>Events &rarr; Sections</strong>, then paste a section's code, like <code>[bx_section name="recent"]</code>, into a page where it should appear. Changing a section changes it on every page that uses it.</li>
         <li>Events are ordered by the last day they cover; for filtering they cover everything from their earliest day to their last. A season counts as its whole span (fall: September 23rd to December 20th).</li>
-        <li><strong>Pinned events</strong> come first in Upcoming Events. Tick <em>Pin to the top of Upcoming Events</em> on the event and give it a position (1 is the top); the event screen lists what is pinned now, with positions. Several events can be pinned; the rest follow, soonest first. A pinned event still leaves Upcoming once its last date has passed. The monthly meetings entry is the usual one to pin.</li>
+        <li><strong>Pinned events</strong> come first in Upcoming Events on the home page (News and Events keeps date order). Tick <em>Pin to the top of Upcoming Events on the home page</em> on the event and give it a position (1 is the top); the event screen lists what is pinned now, with positions. Several events can be pinned; the rest follow, soonest first. A pinned event still leaves Upcoming once its last date has passed. The monthly meetings entry is the usual one to pin.</li>
       </ul>
       <h2>Changing or removing an event</h2>
       <p><strong>Events &rarr; All Events</strong>, then Edit or Delete. Deleting cannot be undone, so if in doubt, edit the title to say "Canceled" instead.</p>
