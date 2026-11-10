@@ -82,32 +82,36 @@ function bx_ev_screen_list() {
 }
 
 /* ---------------------------------------------------------------- Add / Edit Event */
-/* One date point: a kind (day / month / season / year) and the fields for it. JavaScript shows only the
-   fields the chosen kind needs; without JavaScript all fields show and the kind decides which are read. */
+/* One date point. First, on its own labeled line, how much of the date is known (exact day / month /
+   season / year); then the fields for it, each with its own label. JavaScript shows only the fields the
+   chosen kind needs; without JavaScript all fields show and the kind decides which are read. */
 function bx_ev_point_fields($name, $p) {
     $u = $p ? $p['u'] : 'day';
-    $kinds = array('day' => 'Day', 'month' => 'Month', 'season' => 'Season', 'year' => 'Year');
-    $h = '<span class="bx-pt">';
-    $h .= '<select class="bx-u" name="' . $name . '[u]">';
+    $id = 'bx-' . trim(preg_replace('/[^A-Za-z0-9_]+/', '-', $name), '-');   // dates[3][f] -> bx-dates-3-f; the template's __i__ is replaced per row
+    $kinds = array('day' => 'The exact day', 'month' => 'Only the month', 'season' => 'Only the season', 'year' => 'Only the year');
+    $h = '<div class="bx-pt">';
+    $h .= '<p class="bx-kind"><label for="' . $id . '-u">How much of this date is known?</label> ';
+    $h .= '<select id="' . $id . '-u" class="bx-u" name="' . $name . '[u]">';
     foreach ($kinds as $k => $l) { $h .= '<option value="' . $k . '"' . selected($u, $k, false) . '>' . $l . '</option>'; }
-    $h .= '</select> ';
-    $h .= '<select class="bx-m" name="' . $name . '[m]"><option value="0">Month</option>';
+    $h .= '</select></p><div class="bx-fields">';
+    $h .= '<label class="bx-f bx-fm"><span>Month</span><select class="bx-m" name="' . $name . '[m]"><option value="0">Choose</option>';
     for ($i = 1; $i <= 12; $i++) { $h .= '<option value="' . $i . '"' . selected($p && isset($p['m']) ? (int) $p['m'] : 0, $i, false) . '>' . bx_ev_mname($i) . '</option>'; }
-    $h .= '</select> <select class="bx-d" name="' . $name . '[d]"><option value="0">Day</option>';
+    $h .= '</select></label><label class="bx-f bx-fd"><span>Day</span><select class="bx-d" name="' . $name . '[d]"><option value="0">Choose</option>';
     for ($i = 1; $i <= 31; $i++) { $h .= '<option value="' . $i . '"' . selected($p && isset($p['d']) ? (int) $p['d'] : 0, $i, false) . '>' . $i . '</option>'; }
-    $h .= '</select> <select class="bx-s" name="' . $name . '[s]">';
+    $h .= '</select></label><label class="bx-f bx-fs"><span>Season</span><select class="bx-s" name="' . $name . '[s]">';
     foreach (array('spring', 'summer', 'fall', 'winter') as $se) { $h .= '<option value="' . $se . '"' . selected($p && isset($p['s']) ? $p['s'] : '', $se, false) . '>' . ucfirst($se) . '</option>'; }
-    $h .= '</select> <input class="bx-y" type="number" name="' . $name . '[y]" value="' . esc_attr($p ? (int) $p['y'] : '') . '" min="1980" max="2100" placeholder="Year" style="width:85px;">';
-    return $h . '</span>';
+    $h .= '</select></label><label class="bx-f bx-fy"><span>Year</span><input class="bx-y" type="number" name="' . $name . '[y]" value="' . esc_attr($p ? (int) $p['y'] : '') . '" min="1980" max="2100"></label>';
+    return $h . '</div></div>';
 }
 
 function bx_ev_part_row($i, $part) {
     $to = !empty($part['t']);
-    $h = '<div class="bx-part" style="margin: 0 0 10px; padding: 8px 10px; background: #fff; border: 1px solid #dcdcde;">';
+    $h = '<div class="bx-part">';
+    $h .= '<h4 class="bx-legend" data-one="Date" data-span="Start date">' . ($to ? 'Start date' : 'Date') . '</h4>';
     $h .= bx_ev_point_fields('dates[' . $i . '][f]', $part ? $part['f'] : null);
-    $h .= ' <label style="margin: 0 6px;"><input type="checkbox" class="bx-to" name="dates[' . $i . '][span]" value="1"' . checked($to, true, false) . '> to</label> ';
-    $h .= '<span class="bx-tobox"' . ($to ? '' : ' style="display:none;"') . '>' . bx_ev_point_fields('dates[' . $i . '][t]', $to ? $part['t'] : null) . '</span>';
-    $h .= ' <a href="#" class="bx-rm" style="margin-left: 8px; color: #b32d2e;">Remove</a></div>';
+    $h .= '<p class="bx-span"><label><input type="checkbox" class="bx-to" name="dates[' . $i . '][span]" value="1"' . checked($to, true, false) . '> It runs over a stretch of time (a trip, an exhibit): add an end date</label></p>';
+    $h .= '<div class="bx-tobox"' . ($to ? '' : ' style="display:none;"') . '><h4 class="bx-legend">End date</h4>' . bx_ev_point_fields('dates[' . $i . '][t]', $to ? $part['t'] : null) . '</div>';
+    $h .= '<p class="bx-rmline"><a href="#" class="bx-rm">Remove this date</a></p></div>';
     return $h;
 }
 
@@ -117,7 +121,25 @@ function bx_ev_screen_edit() {
     if ($id && !$e) { echo '<div class="wrap"><p>That event no longer exists.</p></div>'; return; }
     $parts = $e ? json_decode($e->dates, true) : array();
     if (!$parts) { $parts = array(null); }
+    $body = $e ? $e->body : '';
+    if (trim($body) !== '' && stripos($body, '<p') === false) { $body = wpautop($body); }   // as the page shows it (bx_ev_body), so Visual keeps its paragraphs
+    // Layout code (photo grids, videos, tables) opens in Code view: Visual would rearrange it.
+    $layout = (bool) preg_match('/<(div|figure|table|iframe|script|style|video|audio|section)\b/i', $body);
     ?>
+    <style>
+      .bx-part { margin: 0 0 12px; padding: 4px 14px 10px; background: #fff; border: 1px solid #dcdcde; }
+      .bx-part h4.bx-legend { margin: 10px 0 6px; font-size: 13px; }
+      .bx-kind { margin: 0 0 8px; }
+      .bx-kind label { margin-right: 6px; }
+      .bx-kind select { min-width: 180px; }
+      .bx-f select { min-width: 120px; }
+      .bx-fields { display: flex; flex-wrap: wrap; gap: 10px; }
+      .bx-f span { display: block; font-size: 12px; color: #50575e; margin-bottom: 2px; }
+      .bx-f input.bx-y { width: 90px; }
+      .bx-tobox { margin-left: 18px; padding-left: 12px; border-left: 3px solid #dcdcde; }
+      .bx-span, .bx-rmline { margin: 10px 0 0; }
+      .bx-rm { color: #b32d2e; }
+    </style>
     <div class="wrap">
       <h1><?php echo $e ? 'Edit Event' : 'Add Event'; ?></h1>
       <?php bx_ev_notice(); ?>
@@ -131,7 +153,7 @@ function bx_ev_screen_edit() {
           <tr><th>Date</th>
               <td><div id="bx_parts"><?php foreach ($parts as $i => $part) { echo bx_ev_part_row($i, $part); } ?></div>
                   <p><a href="#" class="button" id="bx_add">+ Another date</a></p>
-                  <p class="description">Pick Day, Month, Season, or Year depending on how exactly the date is known. Tick "to" for a span (a trip, an exhibit, "Fall 2024 to Spring 2025"). Use "+ Another date" for separate days, such as May 15th and May 17th.<br>
+                  <p class="description">For each date, first choose how much of it is known (the exact day, only the month, only the season, or only the year), then fill in the boxes that appear. For something that runs a while (a trip, an exhibit, "Fall 2024 to Spring 2025"), tick the box under the date and set the end date. Use "+ Another date" for separate days, such as May 15th and May 17th.<br>
                   <strong>Exact dates not known yet?</strong> Choose as much as is known (for example Year 2027, or Spring 2027) and type <em>Dates to be announced</em> in <strong>Time or note</strong> below.<br>
                   Lists put events in order by their last day; a season runs from its first day to its last (fall: September 23rd to December 20th; winter starts December 21st and runs into the next year).</p></td></tr>
           <tr><th><label for="bx_time">Time or note</label></th>
@@ -141,8 +163,16 @@ function bx_ev_screen_edit() {
               <td><?php bx_ev_small_editor('bx_loc', 'location', $e ? $e->location : ''); ?>
                   <p class="description">Optional. Shown under the time, for example <em>Baltimore City Hall, 100 North Holliday Street</em>. The link button can link the place's website.</p></td></tr>
           <tr><th>Description</th>
-              <td><?php wp_editor($e ? $e->body : '', 'bx_body', array('textarea_name' => 'body', 'textarea_rows' => 14, 'media_buttons' => true)); ?>
-                  <p class="description">Notes such as "Canceled" go in the title or here. The <strong>Add Media</strong> button adds photos and PDFs.</p></td></tr>
+              <td><?php
+                  // wpautop off: paragraphs are kept as <p> tags, which is how every event is stored, so Visual
+                  // and Code show the same content and saving never reflows it. Opens in Visual (Code for layout
+                  // code) no matter which tab was used last on another screen.
+                  wp_editor($body, 'bx_body', array('textarea_name' => 'body', 'textarea_rows' => 14, 'media_buttons' => true, 'wpautop' => false, 'default_editor' => $layout ? 'html' : 'tinymce',
+                      'tinymce' => array('content_style' => 'body.mce-content-body { padding: 8px 12px; } p { margin: 0 0 1em; }')));   // the site's editor styles leave no space between paragraphs ?>
+                  <p class="description">Notes such as "Canceled" go in the title or here. The <strong>Add Media</strong> button adds photos and PDFs.
+                  <?php echo $layout
+                      ? '<br><strong>This description has layout code</strong> (a photo grid, video, or table), so it opens in <strong>Code</strong>. Edit the text between the tags; switching to Visual can rearrange the layout.'
+                      : '<br><strong>Visual</strong> shows the description as it will look. <strong>Code</strong> shows the HTML behind it.'; ?></p></td></tr>
         </table>
         <?php submit_button($e ? 'Update Event' : 'Save Event'); ?>
       </form>
@@ -152,13 +182,17 @@ function bx_ev_screen_edit() {
     (function () {
       function show(pt) {
         var u = pt.querySelector('.bx-u').value;
-        pt.querySelector('.bx-m').style.display = (u === 'day' || u === 'month') ? '' : 'none';
-        pt.querySelector('.bx-d').style.display = u === 'day' ? '' : 'none';
-        pt.querySelector('.bx-s').style.display = u === 'season' ? '' : 'none';
+        pt.querySelector('.bx-fm').style.display = (u === 'day' || u === 'month') ? '' : 'none';
+        pt.querySelector('.bx-fd').style.display = u === 'day' ? '' : 'none';
+        pt.querySelector('.bx-fs').style.display = u === 'season' ? '' : 'none';
       }
       function wire(row) {
         row.querySelectorAll('.bx-pt').forEach(function (pt) { show(pt); pt.querySelector('.bx-u').addEventListener('change', function () { show(pt); }); });
-        row.querySelector('.bx-to').addEventListener('change', function () { row.querySelector('.bx-tobox').style.display = this.checked ? '' : 'none'; });
+        row.querySelector('.bx-to').addEventListener('change', function () {
+          row.querySelector('.bx-tobox').style.display = this.checked ? '' : 'none';
+          var lg = row.querySelector('.bx-legend');
+          lg.textContent = this.checked ? lg.getAttribute('data-span') : lg.getAttribute('data-one');
+        });
         row.querySelector('.bx-rm').addEventListener('click', function (ev) { ev.preventDefault(); if (document.querySelectorAll('#bx_parts .bx-part').length > 1) { row.remove(); } });
       }
       document.querySelectorAll('#bx_parts .bx-part').forEach(wire);
@@ -202,7 +236,7 @@ add_action('admin_post_bx_ev_save', function () {
         $parts[] = array('f' => $f, 't' => $t);
     }
     if ($title === '' || !$parts) { wp_safe_redirect(bx_ev_url('bx-event-edit', array('id' => $id, 'bx_msg' => 'bad'))); exit; }
-    $body = isset($_POST['body']) ? wp_unslash($_POST['body']) : '';
+    $body = isset($_POST['body']) ? str_replace("\r\n", "\n", wp_unslash($_POST['body'])) : '';   // browsers send \r\n line ends
     if (!current_user_can('unfiltered_html')) { $body = wp_kses_post($body); }
     $id = bx_ev_save(array(
         'title' => $title, 'dates' => $parts,
@@ -348,9 +382,9 @@ function bx_ev_screen_help() {
       <ol>
         <li><strong>Events &rarr; Add Event.</strong></li>
         <li>Type the title, for example <em>21st Annual CHINA Town Hall</em>.</li>
-        <li>Set the date. Choose <em>Day</em>, <em>Month</em>, <em>Season</em>, or <em>Year</em> for how exactly it is known. For a trip or anything that runs a while, tick <em>to</em> and set the end. For separate days (May 15th and May 17th), use <em>+ Another date</em>.</li>
+        <li>Set the date. First answer <em>How much of this date is known?</em> (the exact day, only the month, only the season, or only the year); the boxes for that appear underneath. For a trip or anything that runs a while, tick the box under the date and set the end date. For separate days (May 15th and May 17th), use <em>+ Another date</em>.</li>
         <li>Fill in <em>Time or note</em> and <em>Location</em> if they matter; they show under the date. If the exact dates are not known yet, set as much of the date as is known (for example Year 2027) and type <em>Dates to be announced</em> in <em>Time or note</em>.</li>
-        <li>Write the description. Notes like "Canceled" go in the title or the description. The <strong>Add Media</strong> button adds photos and PDFs.</li>
+        <li>Write the description in the <strong>Visual</strong> tab, which works like a word processor. <strong>Code</strong> shows the HTML behind it. Descriptions with a photo grid or video open in Code so the layout isn't rearranged. Notes like "Canceled" go in the title or the description. The <strong>Add Media</strong> button adds photos and PDFs.</li>
         <li><strong>Save Event.</strong> It appears on the pages right away.</li>
       </ol>
       <h2>Where events show up</h2>
