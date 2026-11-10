@@ -88,9 +88,9 @@ function bx_ev_screen_list() {
 function bx_ev_point_fields($name, $p) {
     $u = $p ? $p['u'] : 'day';
     $id = 'bx-' . trim(preg_replace('/[^A-Za-z0-9_]+/', '-', $name), '-');   // dates[3][f] -> bx-dates-3-f; the template's __i__ is replaced per row
-    $kinds = array('day' => 'The exact day', 'month' => 'Only the month', 'season' => 'Only the season', 'year' => 'Only the year');
+    $kinds = array('day' => 'Exact day', 'month' => 'Month only', 'season' => 'Season only', 'year' => 'Year only');
     $h = '<div class="bx-pt">';
-    $h .= '<p class="bx-kind"><label for="' . $id . '-u">How much of this date is known?</label> ';
+    $h .= '<p class="bx-kind"><label class="screen-reader-text" for="' . $id . '-u">Date type</label>';
     $h .= '<select id="' . $id . '-u" class="bx-u" name="' . $name . '[u]">';
     foreach ($kinds as $k => $l) { $h .= '<option value="' . $k . '"' . selected($u, $k, false) . '>' . $l . '</option>'; }
     $h .= '</select></p><div class="bx-fields">';
@@ -109,7 +109,7 @@ function bx_ev_part_row($i, $part) {
     $h = '<div class="bx-part">';
     $h .= '<h4 class="bx-legend" data-one="Date" data-span="Start date">' . ($to ? 'Start date' : 'Date') . '</h4>';
     $h .= bx_ev_point_fields('dates[' . $i . '][f]', $part ? $part['f'] : null);
-    $h .= '<p class="bx-span"><label><input type="checkbox" class="bx-to" name="dates[' . $i . '][span]" value="1"' . checked($to, true, false) . '> It runs over a stretch of time (a trip, an exhibit): add an end date</label></p>';
+    $h .= '<p class="bx-span"><label><input type="checkbox" class="bx-to" name="dates[' . $i . '][span]" value="1"' . checked($to, true, false) . '> Date range</label></p>';
     $h .= '<div class="bx-tobox"' . ($to ? '' : ' style="display:none;"') . '><h4 class="bx-legend">End date</h4>' . bx_ev_point_fields('dates[' . $i . '][t]', $to ? $part['t'] : null) . '</div>';
     $h .= '<p class="bx-rmline"><a href="#" class="bx-rm">Remove this date</a></p></div>';
     return $h;
@@ -159,7 +159,7 @@ function bx_ev_screen_edit() {
           <tr><th>Date</th>
               <td><div id="bx_parts"><?php foreach ($parts as $i => $part) { echo bx_ev_part_row($i, $part); } ?></div>
                   <p><a href="#" class="button" id="bx_add">+ Another date</a></p>
-                  <p class="description">For each date, first choose how much of it is known (the exact day, only the month, only the season, or only the year), then fill in the boxes that appear. For something that runs a while (a trip, an exhibit, "Fall 2024 to Spring 2025"), tick the box under the date and set the end date. Use "+ Another date" for separate days, such as May 15th and May 17th.<br>
+                  <p class="description">For each date, pick <em>Exact day</em>, <em>Month only</em>, <em>Season only</em>, or <em>Year only</em>, then fill in the boxes that appear. For something that runs a while (a trip, an exhibit, "Fall 2024 to Spring 2025"), tick <em>Date range</em> and set the end date. Use "+ Another date" for separate days, such as May 15th and May 17th.<br>
                   <strong>Exact dates not known yet?</strong> Choose as much as is known (for example Year 2027, or Spring 2027) and type <em>Dates to be announced</em> in <strong>Time or note</strong> below.<br>
                   Lists put events in order by their last day; a season runs from its first day to its last (fall: September 23rd to December 20th; winter starts December 21st and runs into the next year).</p></td></tr>
           <tr><th>Pin</th>
@@ -403,7 +403,7 @@ function bx_ev_screen_help() {
       <ol>
         <li><strong>Events &rarr; Add Event.</strong></li>
         <li>Type the title, for example <em>21st Annual CHINA Town Hall</em>.</li>
-        <li>Set the date. First answer <em>How much of this date is known?</em> (the exact day, only the month, only the season, or only the year); the boxes for that appear underneath. For a trip or anything that runs a while, tick the box under the date and set the end date. For separate days (May 15th and May 17th), use <em>+ Another date</em>.</li>
+        <li>Set the date. Pick <em>Exact day</em>, <em>Month only</em>, <em>Season only</em>, or <em>Year only</em>; the boxes for that appear underneath. For a trip or anything that runs a while, tick <em>Date range</em> and set the end date. For separate days (May 15th and May 17th), use <em>+ Another date</em>.</li>
         <li>Fill in <em>Time or note</em> and <em>Location</em> if they matter; they show under the date. If the exact dates are not known yet, set as much of the date as is known (for example Year 2027) and type <em>Dates to be announced</em> in <em>Time or note</em>.</li>
         <li>Write the description in the <strong>Visual</strong> tab, which works like a word processor. <strong>Code</strong> shows the HTML behind it. Descriptions with a photo grid or video open in Code so the layout isn't rearranged. Notes like "Canceled" go in the title or the description. The <strong>Add Media</strong> button adds photos and PDFs.</li>
         <li><strong>Save Event.</strong> It appears on the pages right away.</li>
